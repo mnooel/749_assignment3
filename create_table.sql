@@ -10,10 +10,11 @@ DROP TABLE Manager CASCADE CONSTRAINTS PURGE;
 DROP TABLE Member CASCADE CONSTRAINTS PURGE;
 DROP TABLE ActorDirector CASCADE CONSTRAINTS PURGE;
 DROP TABLE DVD CASCADE CONSTRAINTS PURGE;
-
-
--- Create Sequences
-
+-- DROP TABLE ChildrenDVD CASCADE CONSTRAINTS PURGE;
+-- DROP TABLE ForeignDVD CASCADE CONSTRAINTS PURGE;
+DROP TABLE Makes CASCADE CONSTRAINTS PURGE;
+DROP TABLE DVDCopy CASCADE CONSTRAINTS PURGE;
+-- DROP TABLE Rental CASCADE CONSTRAINTS PURGE;
 
 -- Create Branch table
 CREATE TABLE Branch
@@ -55,11 +56,10 @@ CREATE TABLE Staff
     supervisor CHAR(6) REFERENCES Staff (staffNo),
     CONSTRAINT Staff_staffNo_c1 CHECK (staffNo LIKE CONCAT(branchNo, '__')),
     CONSTRAINT Staff_staffNo_c2 CHECK (REGEXP_LIKE(staffNo, '[A-Z]{2}\d{4}')),
-    CONSTRAINT Staff_salary_c   CHECK (salary > 0),
-    CONSTRAINT Staff_pos_c CHECK (position IN ('Manager', 'Supervisor', 'Assistant')),
-    CONSTRAINT Staff_sup_c CHECK (position <> 'Manager' OR supervisor IS NULL)
+    CONSTRAINT Staff_salary_c CHECK (salary > 0),
+    CONSTRAINT Staff_pos_c CHECK (position IN ('manager', 'supervisor', 'assistant')),
+    CONSTRAINT Staff_sup_c CHECK (position <> 'manager' OR supervisor IS NULL)
 );
-
 
 -- Create Manager Table
 CREATE TABLE Manager
@@ -72,16 +72,17 @@ CREATE TABLE Manager
 );
 
 -- Create Member Table
-CREATE TABLE Member(
-    memberNo    CHAR(10)         PRIMARY KEY,
-    firstName   VARCHAR(15)     NOT NULL,
-    lastName    VARCHAR(15)     NOT NULL,
-    street      VARCHAR(25)     NOT NULL,
-    city        VARCHAR(15)     NOT NULL,
-    state       CHAR(2)         NOT NULL,
-    branchNo    CHAR(4)         REFERENCES Branch(branchNo)     NOT NULL,
-    registDate  DATE            DEFAULT SYSDATE                 NOT NULL,
-    CONSTRAINT Member_memberNo  CHECK (REGEXP_LIKE(memberNo, 'M\d{9}'))
+CREATE TABLE Member
+(
+    memberNo   CHAR(10) PRIMARY KEY,
+    firstName  VARCHAR(15)                          NOT NULL,
+    lastName   VARCHAR(15)                          NOT NULL,
+    street     VARCHAR(25)                          NOT NULL,
+    city       VARCHAR(15)                          NOT NULL,
+    state      CHAR(2)                              NOT NULL,
+    branchNo   CHAR(4) REFERENCES Branch (branchNo) NOT NULL,
+    registDate DATE DEFAULT SYSDATE                 NOT NULL,
+    CONSTRAINT Member_memberNo_c CHECK (REGEXP_LIKE(memberNo, 'M\d{9}'))
 );
 
 -- Create ActorDirector Table
@@ -90,7 +91,7 @@ CREATE TABLE ActorDirector
     stageName VARCHAR(35) PRIMARY KEY,
     name      VARCHAR(50) NOT NULL,
     gender    CHAR(1) DEFAULT 'M',
-    CONSTRAINT c_ActorDirector_gender CHECK (gender IN ('M', 'F'))
+    CONSTRAINT ActorDirector_gender_c CHECK (gender IN ('M', 'F'))
 );
 
 -- Create DVD Table
@@ -100,79 +101,37 @@ CREATE TABLE DVD
     title     VARCHAR(50) NOT NULL,
     category  VARCHAR(15) NOT NULL,
     dailyRent FLOAT       NOT NULL,
-    CONSTRAINT c_DVD_category CHECK (category IN ('action', 'children', 'drama', 'horror', 'tv series', 'sci-fi')),
-    CONSTRAINT c_DVD_dailyRent CHECK (dailyRent >= 0.0),
-    CONSTRAINT c_DVD_catalogNo CHECK (REGEXP_LIKE(catalogNo, 'D\d{5}'))
+    CONSTRAINT DVD_category_c CHECK (category IN ('action', 'children', 'drama', 'horror', 'tv series', 'sci-fi')),
+    CONSTRAINT DVD_dailyRent_c CHECK (dailyRent >= 0.0),
+    CONSTRAINT DVD_catalogNo_c CHECK (REGEXP_LIKE(catalogNo, 'D\d{5}'))
 );
 
 -- TODO Create ChildrenDVD Table
 
 -- TODO Create ForeignDVD Table
 
--- TODO Create Makes Table
+-- Create Makes Table
+CREATE TABLE Makes
+(
+    stageName   VARCHAR(50) REFERENCES ActorDirector (stageName) NOT NULL,
+    catalogNo   CHAR(6) REFERENCES DVD (catalogNo) NOT NULL,
+    role        VARCHAR(50) NOT NULL,
+    CONSTRAINT Makes_pk_c  PRIMARY KEY (stageName, catalogNo)
+);
 
--- TODO Create DVDCopy Table
+-- Create DVDCopy Table
+CREATE TABLE DVDCopy
+(
+    catalogNo CHAR(6) REFERENCES DVD (catalogNo) NOT NULL ,
+    copyNo    INTEGER NOT NULL,
+    condition INTEGER NOT NULL,
+    branchNo  CHAR(4) REFERENCES Branch (branchNo),
+    CONSTRAINT DVDCopy_pk_c PRIMARY KEY (catalogNo, copyNo),
+    CONSTRAINT DVDCopy_condition_c CHECK (condition IN (1, 2, 3, 4))
+);
 
 -- TODO Create Rental Table
 
 -- list all tables
 SELECT *
 FROM tab;
-
--- Insert Branch Data
-INSERT INTO Branch (branchNo, street, city, state, zip)
-VALUES ('WI01', '100 E Capital Dr', 'Milwaukee', 'WI', '53201');
-
-INSERT INTO Branch (branchNo, street, city, state, zip)
-VALUES ('WI02', '250 N Swan Ave', 'Milwaukee', 'WI', '53217');
-
-INSERT INTO Branch (branchNo, street, city, state, zip)
-VALUES ('WI03', '750 W Mequon Rd', 'Milwaukee', 'WI', '53221');
-
-INSERT INTO Branch (branchNo, street, city, state, zip)
-VALUES ('IL01', '844 E Milwaukee Ave', 'Chicago', 'IL', '60601');
-
-INSERT INTO Branch (branchNo, street, city, state, zip)
-VALUES ('IL02', '777 W Canal St', 'Chicago', 'IL', '60612');
-
--- Insert BranchTel Data
-INSERT INTO BranchTel (branchNo, telNo)
-VALUES  ('WI01', '414-299-1111');
-
-INSERT INTO BranchTel (branchNo, telNo)
-VALUES  ('WI02', '414-299-1112');
-
-INSERT INTO BranchTel (branchNo, telNo)
-VALUES  ('WI03', '414-299-1113');
-
-INSERT INTO BranchTel (branchNo, telNo)
-VALUES  ('IL01', '312-299-1111');
-
-INSERT INTO BranchTel (branchNo, telNo)
-VALUES  ('IL02', '312-299-1112');
-
--- TODO Insert Staff Data
-INSERT INTO Staff (staffNo, firstName, lastName, position, salary, DOB, branchNo, supervisor)
-VALUES ()
-
-
--- TODO Insert Manager Data
-
--- TODO Insert Member Data
-
--- TODO Insert ActorDirector Data
-
--- TODO Insert DVD Data
-
--- TODO Insert ChildrenDVD Data
-
--- TODO Insert ForeignDVD Data
-
--- TODO Insert Makes Data
-
--- TODO Insert DVDCopy Data
-
--- TODO Insert Rental Data
-
-
-
