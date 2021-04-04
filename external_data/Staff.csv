@@ -1,0 +1,9 @@
+staffNo,firstName,lastName,position,salary,DOB,branchNo,supervisor
+WI0101,Bob,Johnstone,manager,58000,12-Dec-50,WI01,
+WI0102,Dan,Nieley,supervisor,48000,17-Oct-60,WI01,WI0101
+WI0103,Lisa,Swan,assistant,38000,1-Jan-90,WI01,WI0102
+WI0104,John,Smith,assistant,38000,21-Feb-81,WI01,WI0102
+WI0201,Lance,Oniel,manager,68000,12-Dec-68,WI02,
+WI0202,Linda,Zahedi,supervisor,58000,17-Oct-87,WI02,WI0201
+WI0203,Jennifer,Haseman,supervisor,56000,1-Jan-86,WI02,WI0201
+WI0204,Ben,Sinha,supervisor,52000,21-Feb-88,WI02,WI0201
