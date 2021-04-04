@@ -5,11 +5,11 @@ import pandas as pd
 from engine import OracleEngine, Record
 
 
-def insert_csv_data_into_oracle(tables_list: list):
+def insert_csv_data_into_oracle(tables: list):
     # engine
     engine = OracleEngine()
 
-    for table in tables_list:
+    for table in tables:
 
         # data df
         data_df = pd.read_csv(f'external_data/{table}.csv')
@@ -30,4 +30,4 @@ def insert_csv_data_into_oracle(tables_list: list):
 
 if __name__ == '__main__':
     tables_list = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes']
-    insert_csv_data_into_oracle(tables_list=tables_list)
+    insert_csv_data_into_oracle(tables=tables_list)
