@@ -1,6 +1,6 @@
-# 749_assignment3
+# [749_assignment3](https://github.com/mnooel/749_assignment3)
 #### Michael Noel
-Source code for assignment 3 project, BUS ADM 749 Spring 2021.
+Source code repository for assignment 3 project, BUS ADM 749 Spring 2021.
 
 See [sql_scripts](https://github.com/mnooel/749_assignment3/tree/main/sql_scripts) for the bare requirements of the 
 assignment.
