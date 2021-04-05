@@ -1,25 +1,78 @@
 # engine.py
 import os
+import logging
+import re
 from datetime import date
 from dotenv import load_dotenv
-
 import cx_Oracle
+
+from setup_logging import setup_logger
+
+sql_logger = logging.getLogger(__name__)
+setup_logger(sql_logger, 'logs/oracle.log')
 
 load_dotenv()
 
 
-class OracleEngine:
+class OracleConnection(cx_Oracle.Connection):
 
     def __init__(self):
-        cx_Oracle.init_oracle_client(lib_dir='/Users/michaelnoel/Downloads/instantclient_19_8')
-        self.conn: cx_Oracle.Connection = cx_Oracle.connect(
+        connectString = (
             f'{os.getenv("ORACLE_USER")}/{os.getenv("ORACLE_PASSWORD")}@{os.getenv("ORACLE_DSN")}'
         )
-        print('Connected to Oracle Database')
-        self.cursor = self.conn.cursor()
+        cx_Oracle.init_oracle_client(lib_dir='/Users/michaelnoel/Downloads/instantclient_19_8')
+        sql_logger.info('Connected to the database.')
+        super().__init__(connectString)
 
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}'
+    def execute(self, sql):
+        cursor = self.cursor()
+        try:
+            # sql_logger.info(sql)
+            cursor.execute(sql)
+            sql_logger.info(sql)
+            # return cursor
+        except cx_Oracle.Error as e:
+            errorObj, = e.args
+            sql_logger.error(f'{errorObj.message} | {sql}')
+
+    def execute_scripts_from_file(self, path: str):
+
+        # sql command list to append to
+        sql_commands: list = []
+
+        # open and read the file as a single buffer
+        sql_file = open(path, 'r')
+        sql_lines = sql_file.readlines()
+        sql_file.close()
+
+        # blank string to append parts of commands to
+        command = ''
+
+        # iterate over lines to create commands
+        for line in sql_lines:
+            # ignore line if the line is a comment pass
+            if '--' == line[:2]:
+                pass
+            # ignore line if the line is whitespace
+            elif '\n' == line:
+                pass
+            else:
+                # replace excess whitespace and new line characters
+                line = line.replace('\n', ' ')
+                line = re.sub(' +', ' ', line)
+                # if end of command finish creating the command and append it to the list of commands
+                if ';' in line:
+                    line = line.replace(';', '')
+                    command += line
+                    sql_commands.append(command)
+                    command = ''
+                # add the part of the command
+                else:
+                    command += line
+
+        # execute every command from the file
+        for command in sql_commands:
+            self.execute(command)
 
 
 class RecordValue:
