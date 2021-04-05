@@ -17,8 +17,8 @@ This project has four major components found in the directories of the repositor
 4. [sql_scripts](https://github.com/mnooel/749_assignment3/tree/main/sql_scripts) - variety of sql scripts required for the assignment.
 
 There are four other files used to deconstruct then reconstruct the database.
-1. drop_tables.py: does just what it sounds like.
-2. create_tables.py does just what it sounds like.
-3. insert_data.py: does just what it sounds like.
-4. tear_down_and_build.py: a combination of the three prior files/functions to do it all at once.
+1. [drop_tables.py](https://github.com/mnooel/749_assignment3/blob/main/drop_tables.py) - does just what it sounds like.
+2. [create_tables.py](https://github.com/mnooel/749_assignment3/blob/main/create_tables.py) - does just what it sounds like.
+3. [insert_data.py](https://github.com/mnooel/749_assignment3/blob/main/insert_data.py) - does just what it sounds like.
+4. [tear_down_and_build.py](https://github.com/mnooel/749_assignment3/blob/main/tear_down_and_build.py) - a combination of the three prior files/functions to do it all at once.
 
