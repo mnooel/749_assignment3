@@ -1,13 +1,10 @@
 # insert_data.py
 
 import pandas as pd
+from engine import OracleConnection, Record
 
-from engine import OracleEngine, Record
 
-
-def insert_csv_data_into_oracle(tables: list):
-    # engine
-    engine = OracleEngine()
+def insert_csv_data_into_oracle(connection: OracleConnection, tables: list):
 
     for table in tables:
 
@@ -22,12 +19,12 @@ def insert_csv_data_into_oracle(tables: list):
 
         for record in record_objects:
             insert_string = record.render_insert_string()
-            print(insert_string)
-            engine.cursor.execute(insert_string)
+            connection.execute(insert_string)
 
-    engine.conn.commit()
+    connection.commit()
 
 
 if __name__ == '__main__':
+    conn = OracleConnection()
     tables_list = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes']
-    insert_csv_data_into_oracle(tables=tables_list)
+    insert_csv_data_into_oracle(connection=conn, tables=tables_list)
