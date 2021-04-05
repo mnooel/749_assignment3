@@ -93,26 +93,54 @@ CREATE TABLE DVD
     CONSTRAINT DVD_catalogNo_c CHECK (REGEXP_LIKE(catalogNo, 'D\d{5}'))
 );
 
--- TODO Create ChildrenDVD Table
+-- Create ChildrenDVD Table
+CREATE TABLE ChildrenDVD
+(
+    catalogNo CHAR(6) REFERENCES DVD (catalogNo) PRIMARY KEY,
+    ageGroup  VARCHAR(15) NOT NULL,
+    CONSTRAINT ChildrenDVD_ageGroup_c CHECK ( ageGroup IN ('infant', 'toddler', 'teenager'))
+);
 
--- TODO Create ForeignDVD Table
+-- Create ForeignDVD Table
+CREATE TABLE ForeignDVD
+(
+    catalogNo        CHAR(6) REFERENCES DVD (catalogNo) PRIMARY KEY,
+    spokenLanguage   VARCHAR(20) NOT NULL,
+    subtitleLanguage VARCHAR(20)
+);
 
 -- Create Makes Table
 CREATE TABLE Makes
 (
-    stageName   VARCHAR(50) REFERENCES ActorDirector (stageName) NOT NULL,
-    catalogNo   CHAR(6) REFERENCES DVD (catalogNo) NOT NULL,
-    role        VARCHAR(50) NOT NULL,
-    CONSTRAINT Makes_pk_c  PRIMARY KEY (stageName, catalogNo)
+    stageName VARCHAR(50) REFERENCES ActorDirector (stageName) NOT NULL,
+    catalogNo CHAR(6) REFERENCES DVD (catalogNo)               NOT NULL,
+    role      VARCHAR(50)                                      NOT NULL,
+    CONSTRAINT Makes_pk_c PRIMARY KEY (stageName, catalogNo)
 );
 
 -- Create DVDCopy Table
 CREATE TABLE DVDCopy
 (
-    catalogNo CHAR(6) REFERENCES DVD (catalogNo) NOT NULL ,
-    copyNo    INTEGER NOT NULL,
-    condition INTEGER NOT NULL,
+    catalogNo CHAR(6) REFERENCES DVD (catalogNo) NOT NULL,
+    copyNo    INTEGER                            NOT NULL,
+    condition INTEGER                            NOT NULL,
     branchNo  CHAR(4) REFERENCES Branch (branchNo),
     CONSTRAINT DVDCopy_pk_c PRIMARY KEY (catalogNo, copyNo),
     CONSTRAINT DVDCopy_condition_c CHECK (condition IN (1, 2, 3, 4))
+);
+
+-- Create Rental Table
+CREATE TABLE Rental
+(
+    rentalNo   INTEGER PRIMARY KEY,
+    catalogNo  CHAR(6)                               NOT NULL,
+    copyNo     INTEGER                               NOT NULL,
+    memberNo   CHAR(10) REFERENCES Member (memberNo) NOT NULL,
+    rentedFrom CHAR(4) REFERENCES Branch (branchNo)  NOT NULL,
+    rentDate   DATE                                  NOT NULL,
+    returnedTo CHAR(4) REFERENCES Branch (branchNo),
+    returnDate DATE,
+    CONSTRAINT Rental_copy_fk FOREIGN KEY (catalogNo, copyNo) REFERENCES DVDCopy (catalogNo, copyNo),
+    CONSTRAINT Rental_return_c CHECK (((returnedTo IS NULL) AND (returnDate IS NULL)) OR
+                                      ((returnedTo IS NOT NULL) AND (returnDate IS NOT NULL)))
 );
