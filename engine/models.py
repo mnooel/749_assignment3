@@ -60,13 +60,13 @@ class OracleConnection(cx_Oracle.Connection):
                 # replace excess whitespace and new line characters
                 line = line.replace('\n', ' ')
                 line = re.sub(' +', ' ', line)
-                # if end of command finish creating the command and append it to the list of commands
+                # if end of command finish creating the command and append it to the list of commands then clear command
                 if ';' in line:
                     line = line.replace(';', '')
                     command += line
                     sql_commands.append(command)
                     command = ''
-                # add the part of the command
+                # line is part of previous line command. add it to the partial command string.
                 else:
                     command += line
 
