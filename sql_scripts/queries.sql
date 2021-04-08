@@ -53,23 +53,39 @@ HAVING COUNT(CL.TITLE) > 1;
 SELECT DISTINCT TITLE, STREET, CITY, STATE, ZIP
 FROM DVDCOPYLOCATION
 WHERE CATALOGNO IN
-((
-    SELECT DISTINCT CATALOGNO
-    FROM DVD
-    WHERE CATALOGNO IN (SELECT CATALOGNO FROM MAKES WHERE STAGENAME = 'Tom Hanks' AND ROLE = 'director')
-)
-MINUS
-(
-SELECT DISTINCT CATALOGNO
-FROM DVDCOPYLOCATION
-    WHERE CATALOGNO IN (SELECT CATALOGNO FROM MAKES WHERE STAGENAME = 'Tom Hanks' AND ROLE = 'director')
-    AND CITY = 'Milwaukee'
-));
+      ((
+           SELECT DISTINCT CATALOGNO
+           FROM DVD
+           WHERE CATALOGNO IN (SELECT CATALOGNO FROM MAKES WHERE STAGENAME = 'Tom Hanks' AND ROLE = 'director')
+       )
+       MINUS
+       (
+           SELECT DISTINCT CATALOGNO
+           FROM DVDCOPYLOCATION
+           WHERE CATALOGNO IN (SELECT CATALOGNO FROM MAKES WHERE STAGENAME = 'Tom Hanks' AND ROLE = 'director')
+             AND CITY = 'Milwaukee'
+       ));
 
 -- Find which DVDs directed by Tom Hanks are currently available in ALL branches in Milwaukee.
 -- Get the title of every such. (Hint: This query involves the Division operation in relational algebra, but is notoriously difficult to write in SQL.
 -- Consider using sub-queries. Restate the query as “Find every DVD directed by Tom Hanks, such that there does NOT exist a branch in Milwaukee that does NOT stock it”).
--- TODO QUERY 7
+-- QUERY 7
+SELECT Distinct D.TITLE
+FROM DVDCOPY C, DVD D
+WHERE C.CATALOGNO = D.CATALOGNO
+    AND C.BRANCHNO IN (SELECT BRANCHNO FROM BRANCH WHERE CITY = 'Milwaukee')
+    AND C.CATALOGNO IN (SELECT CATALOGNO FROM MAKES WHERE STAGENAME = 'Tom Hanks' AND ROLE = 'director')
+    AND NOT EXISTS
+    (
+    SELECT BRANCHNO
+    FROM BRANCH
+    WHERE CITY = 'Milwaukee'
+    MINUS
+    SELECT BRANCHNO
+    FROM DVDCOPY
+    WHERE DVDCOPY.CATALOGNO = D.CATALOGNO
+    )
+;
 
 -- List the first name, last name, and DOB of each staff member.
 -- QUERY 8
