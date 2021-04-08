@@ -19,7 +19,7 @@ This project has four major components found in the directories of the repositor
 There are five other files used to deconstruct then reconstruct the database.
 1. [drop_tables.py](https://github.com/mnooel/749_assignment3/blob/main/drop_tables.py) - does just what it sounds like.
 2. [create_tables.py](https://github.com/mnooel/749_assignment3/blob/main/create_tables.py) - does just what it sounds like. 
-3. [create_views.py](https://github.com/mnooel/749_assignment3/blob/main/create_views.py - does just what it sounds like.
+3. [create_views.py](https://github.com/mnooel/749_assignment3/blob/main/create_views.py) - does just what it sounds like.
 4. [insert_data.py](https://github.com/mnooel/749_assignment3/blob/main/insert_data.py) - does just what it sounds like.
 5. [tear_down_and_build.py](https://github.com/mnooel/749_assignment3/blob/main/tear_down_and_build.py) - a combination of the three prior files/functions to do it all at once.
 
