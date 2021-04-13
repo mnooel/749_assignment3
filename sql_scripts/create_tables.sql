@@ -7,10 +7,10 @@
 CREATE TABLE Branch
 (
     branchNo CHAR(4),
-    street   VARCHAR(25) NOT NULL,
-    city     VARCHAR(15) NOT NULL,
+    street   VARCHAR2(25) NOT NULL,
+    city     VARCHAR2(15) NOT NULL,
     state    CHAR(2)     NOT NULL,
-    zip      VARCHAR(5)  NOT NULL,
+    zip      VARCHAR2(5)  NOT NULL,
     CONSTRAINT Branch_states CHECK (state IN
                                     ('MA', 'RI', 'NH', 'ME', 'VT', 'CT', 'NY', 'NJ', 'PA', 'DE', 'DC', 'VA', 'MD', 'WV',
                                      'NC', 'SC', 'GA', 'FL', 'AL', 'TN', 'MS', 'KY', 'OH', 'IN', 'MI', 'IA', 'WI', 'MN',
@@ -26,7 +26,7 @@ CREATE TABLE Branch
 CREATE TABLE BranchTel
 (
     branchNo CHAR(4),
-    telNo    VARCHAR(30),
+    telNo    VARCHAR2(30),
     CONSTRAINT BranchTel_PK PRIMARY KEY (branchNo, telNo),
     CONSTRAINT BranchTel_branchNo_FK FOREIGN KEY (branchNo) REFERENCES Branch (branchNo),
     CONSTRAINT BranchTel_telNo_unique UNIQUE (telNo),
@@ -37,9 +37,9 @@ CREATE TABLE BranchTel
 CREATE TABLE Staff
 (
     staffNo    CHAR(6),
-    firstName  VARCHAR(15)      NOT NULL,
-    lastName   VARCHAR(15)      NOT NULL,
-    position   VARCHAR(10)      NOT NULL,
+    firstName  VARCHAR2(15)      NOT NULL,
+    lastName   VARCHAR2(15)      NOT NULL,
+    position   VARCHAR2(10)      NOT NULL,
     salary     NUMBER(7, 2)     NOT NULL,
     DOB        DATE             NOT NULL,
     branchNo   CHAR(4)          NOT NULL,
@@ -58,8 +58,8 @@ CREATE TABLE Staff
 CREATE TABLE Manager
 (
     staffNo   CHAR(6),
-    cellPhone VARCHAR(20),
-    eMail     VARCHAR(50),
+    cellPhone VARCHAR2(20),
+    eMail     VARCHAR2(50),
     CONSTRAINT Manager_PK PRIMARY KEY (staffNo),
     CONSTRAINT Manager_staffNo_FK FOREIGN KEY (staffNo) REFERENCES Staff (staffNo),
     CONSTRAINT Manager_cellPhone_c1 CHECK (REGEXP_LIKE(cellPhone, '\d{3}-\d{3}-\d{4}')),
@@ -72,10 +72,10 @@ CREATE TABLE Manager
 CREATE TABLE Member
 (
     memberNo   CHAR(10),
-    firstName  VARCHAR(15)                      NOT NULL,
-    lastName   VARCHAR(15)                      NOT NULL,
-    street     VARCHAR(25)                      NOT NULL,
-    city       VARCHAR(15)                      NOT NULL,
+    firstName  VARCHAR2(15)                      NOT NULL,
+    lastName   VARCHAR2(15)                      NOT NULL,
+    street     VARCHAR2(25)                      NOT NULL,
+    city       VARCHAR2(15)                      NOT NULL,
     state      CHAR(2)                          NOT NULL,
     branchNo   CHAR(4)                          NOT NULL,
     registDate DATE         DEFAULT SYSDATE     NOT NULL,
@@ -87,8 +87,8 @@ CREATE TABLE Member
 -- Create ActorDirector Table
 CREATE TABLE ActorDirector
 (
-    stageName VARCHAR(35),
-    name      VARCHAR(50)       NOT NULL,
+    stageName VARCHAR2(35),
+    name      VARCHAR2(50)       NOT NULL,
     gender    CHAR(1)           DEFAULT 'M',
     CONSTRAINT ActorDirector_PK PRIMARY KEY (stageName),
     CONSTRAINT ActorDirector_gender_c CHECK (gender IN ('M', 'F'))
@@ -98,8 +98,8 @@ CREATE TABLE ActorDirector
 CREATE TABLE DVD
 (
     catalogNo CHAR(6),
-    title     VARCHAR(50) NOT NULL,
-    category  VARCHAR(15) NOT NULL,
+    title     VARCHAR2(50) NOT NULL,
+    category  VARCHAR2(15) NOT NULL,
     dailyRent FLOAT       NOT NULL,
     CONSTRAINT DVD_PK PRIMARY KEY (catalogNo),
     CONSTRAINT DVD_category_c CHECK (category IN ('action', 'children', 'drama', 'horror', 'tv series', 'sci-fi')),
@@ -111,7 +111,7 @@ CREATE TABLE DVD
 CREATE TABLE ChildrenDVD
 (
     catalogNo CHAR(6),
-    ageGroup  VARCHAR(15) NOT NULL,
+    ageGroup  VARCHAR2(15) NOT NULL,
     CONSTRAINT ChildrenDVD_PK PRIMARY KEY (catalogNo),
     CONSTRAINT ChildrenDVD_catalogNo_FK FOREIGN KEY (catalogNo) REFERENCES DVD (catalogNo),
     CONSTRAINT ChildrenDVD_ageGroup_c CHECK ( ageGroup IN ('infant', 'toddler', 'teenager'))
@@ -121,8 +121,8 @@ CREATE TABLE ChildrenDVD
 CREATE TABLE ForeignDVD
 (
     catalogNo        CHAR(6),
-    spokenLanguage   VARCHAR(20) NOT NULL,
-    subtitleLanguage VARCHAR(20),
+    spokenLanguage   VARCHAR2(20) NOT NULL,
+    subtitleLanguage VARCHAR2(20),
     CONSTRAINT ForeignDVD_PK PRIMARY KEY (catalogNo),
     CONSTRAINT ForeignDVD_catalogNo_FK FOREIGN KEY (catalogNo) REFERENCES DVD (catalogNo)
 );
@@ -130,9 +130,9 @@ CREATE TABLE ForeignDVD
 -- Create Makes Table
 CREATE TABLE Makes
 (
-    stageName VARCHAR(50)   NOT NULL,
+    stageName VARCHAR2(50)   NOT NULL,
     catalogNo CHAR(6)       NOT NULL,
-    role      VARCHAR(50)   NOT NULL,
+    role      VARCHAR2(50)   NOT NULL,
     CONSTRAINT Makes_pk_c PRIMARY KEY (stageName, catalogNo),
     CONSTRAINT Makes_stageName_FK FOREIGN KEY (stageName) REFERENCES ActorDirector (stageName),
     CONSTRAINT Makes_catalogNo_FK FOREIGN KEY (catalogNo) REFERENCES DVD (catalogNo)
