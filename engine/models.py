@@ -47,20 +47,67 @@ class OracleConnection(cx_Oracle.Connection):
 
         # blank string to append parts of commands to
         command = ''
+        procedure = False
 
         # iterate over lines to create commands
         for line in sql_lines:
+
+            # strip leading whitespace off the line
+            line = line.lstrip()
+
             # ignore line if the line is a comment pass
             if '--' == line[:2]:
                 pass
+                continue
+
+            # aggregate lines that are part of P/L language
+            if 'CREATE OR REPLACE PROCEDURE' in line or \
+                    'CREATE OR REPLACE TRIGGER' in line or \
+                    'CREATE OR REPLACE FUNCTION' in line:
+                procedure = True
+
+            if procedure:
+                # ignore line if the line is a comment
+                if '--' == line[:2]:
+                    pass
+                # ignore line if the line is whitespace
+                elif '\n' == line:
+                    pass
+                # if end of command
+                #   1. finish create the command
+                #   2. append it to the list of commands
+                #   3. clear the command string for the next command
+                #   4. set procedure back to false
+                elif 'END;/\n' in line:
+                    # replace new line characters
+                    line = line.replace('/\n', ' ')
+                    # replace excess whitespace
+                    line = re.sub(' +', ' ', line)
+                    command += line
+                    sql_commands.append(command)
+                    command = ''
+                    procedure = False
+                    continue
+                # line is middle part of P/L command
+                else:
+                    # replace new line characters
+                    line = line.replace('\n', ' ')
+                    # replace excess whitespace
+                    line = re.sub(' +', ' ', line)
+                    command += line
+                    continue
             # ignore line if the line is whitespace
             elif '\n' == line:
                 pass
             else:
-                # replace excess whitespace and new line characters
+                # replace new line characters
                 line = line.replace('\n', ' ')
+                # replace excess whitespace
                 line = re.sub(' +', ' ', line)
-                # if end of command finish creating the command and append it to the list of commands then clear command
+                # if end of command
+                #   1. finish create the command
+                #   2. append it to the list of commands
+                #   3. clear the command string for the next command
                 if ';' in line:
                     line = line.replace(';', '')
                     command += line
