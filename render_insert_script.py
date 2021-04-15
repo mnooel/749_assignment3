@@ -35,5 +35,5 @@ def render_insert_script(file_name: str, tables: list):
 
 
 if __name__ == '__main__':
-    tables = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes']
-    render_insert_script(file_name='insert_data.sql',tables=tables)
+    tables = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes', 'Member']
+    render_insert_script(file_name='insert_data.sql', tables=tables)
