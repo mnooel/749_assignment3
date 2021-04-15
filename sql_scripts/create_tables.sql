@@ -3,6 +3,15 @@
 -- Continental Palms DVD
 -- create_tables.sql
 
+-- Create Rental Sequence
+CREATE SEQUENCE rental_sequence
+    INCREMENT BY 1
+    START WITH 100000
+    NOMAXVALUE
+    NOCYCLE
+    CACHE 10;
+
+
 -- Create Branch table
 CREATE TABLE Branch
 (
@@ -160,8 +169,8 @@ CREATE TABLE Rental
     memberNo   CHAR(10)     NOT NULL,
     rentedFrom CHAR(4)      NOT NULL,
     rentDate   DATE         NOT NULL,
-    returnedTo CHAR(4),
-    returnDate DATE,
+    returnedTo CHAR(4)      DEFAULT NULL,
+    returnDate DATE         DEFAULT NULL,
     CONSTRAINT Rental_PK PRIMARY KEY (rentalNo),
     CONSTRAINT Rental_memberNo FOREIGN KEY (memberNo) REFERENCES Member (memberNo),
     CONSTRAINT Rental_copy_FK FOREIGN KEY (catalogNo, copyNo) REFERENCES DVDCopy (catalogNo, copyNo),
