@@ -81,11 +81,12 @@ CREATE TABLE Manager
 CREATE TABLE Member
 (
     memberNo   CHAR(10),
-    firstName  VARCHAR2(15)                      NOT NULL,
-    lastName   VARCHAR2(15)                      NOT NULL,
-    street     VARCHAR2(25)                      NOT NULL,
-    city       VARCHAR2(15)                      NOT NULL,
+    firstName  VARCHAR2(15)                     NOT NULL,
+    lastName   VARCHAR2(15)                     NOT NULL,
+    street     VARCHAR2(25)                     NOT NULL,
+    city       VARCHAR2(15)                     NOT NULL,
     state      CHAR(2)                          NOT NULL,
+    zip        CHAR(5)                          NOT NULL,
     branchNo   CHAR(4)                          NOT NULL,
     registDate DATE         DEFAULT SYSDATE     NOT NULL,
     CONSTRAINT Member_PK PRIMARY KEY (memberNo),
