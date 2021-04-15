@@ -9,7 +9,9 @@
 -- In create_table.sql I have define a sequence for rental. In drop_tables.sql I drop it for testing purposes.
 -- The trigger should use the next val of the sequence when a rental is inserted.
 -- Note that in the test data for assignment 4 the rental number is a type char(6).
---      I am using an integer.
+--      I am using an integer for the rentalNo starting at 100000.
+--      Another digit place to the rentalNo should not be needed for 1 million rentals.
+--      Continental Palms DVD should be doing pretty go then.
 
 CREATE OR REPLACE TRIGGER rental_on_insert
     BEFORE INSERT ON RENTAL
@@ -20,6 +22,7 @@ BEGIN
         FROM DUAL;
 END;/
 
+
 -- EXTRA PROCEDURE checkOut. Placed before CheckIn since it's the logical sequence of events.
 -- Write a procedure named checkOut to checks out a DVDCopy.
 -- The procedure takes four parameters: the memberNo, the branchNo, the catalogNo and the copyNo.
@@ -27,12 +30,12 @@ END;/
 
 CREATE OR REPLACE PROCEDURE CheckOut (
     theCatalogNo    DVDCopy.catalogNo%TYPE,
-    theBranch       Branch.branchNo%TYPE,
     theCopyNo       DVDCopy.copyNo%TYPE,
     theMember       Member.memberNo%TYPE)
 AS
     -- declare necessary variables.
     flag            NUMBER(1);
+    theBranch       CHAR(4);
     errorNo         NUMBER(5);
     errorMsg        VARCHAR2(100);
     no_member       EXCEPTION;
@@ -52,14 +55,13 @@ BEGIN
         RAISE no_member;
     END IF;
 
-    -- Check to see if the branch exists.
-    SELECT COUNT(*) INTO flag
-        FROM BRANCH
+    -- put branch into the branch
+    SELECT
+        DISTINCT BRANCHNO INTO thebranch
+    FROM DVDCOPY
     WHERE
-        BRANCHNO = theBranch;
-    IF flag < 1 THEN
-        RAISE no_branch;
-    END IF;
+          CATALOGNO = theCatalogNo
+      AND COPYNO = theCopyNo;
 
     -- Check to see if the DVD exists.
     SELECT COUNT(*) INTO flag
@@ -132,6 +134,7 @@ EXCEPTION
                     || theCatalogNo || ' COPYNO: ' || theCopyNo);
 END;/
 
+
 -- PROCEDURE
 -- Write a procedure named CheckIn to check in a returned DVDCopy.
 -- The procedure takes two parameters: the rentalNo and the branchNo where the DVDCopy is returned.
@@ -170,8 +173,9 @@ BEGIN
     SELECT COUNT(*) INTO flag
     FROM RENTAL
     WHERE RENTALNO = theRental
-    AND RETURNEDTO IS NOT NULL;
-    IF flag < 1 THEN
+    AND RETURNEDTO IS NULL
+    AND RETURNDATE IS NULL;
+    IF flag <> 1 THEN
         RAISE checked_in;
     END IF;
 
@@ -205,7 +209,6 @@ EXCEPTION
                         theRental));
 
 END;/
-
 
 
 -- FUNCTION
