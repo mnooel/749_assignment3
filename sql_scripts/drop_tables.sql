@@ -3,6 +3,9 @@
 -- Continental Palms DVD
 -- drop_tables.sql
 
+-- Drop sequences before running script.
+DROP SEQUENCE rental_sequence;
+
 -- Drop tables before running script.
 DROP TABLE Branch CASCADE CONSTRAINTS PURGE;
 DROP TABLE BranchTel CASCADE CONSTRAINTS PURGE;
@@ -16,4 +19,6 @@ DROP TABLE ForeignDVD CASCADE CONSTRAINTS PURGE;
 DROP TABLE Makes CASCADE CONSTRAINTS PURGE;
 DROP TABLE DVDCopy CASCADE CONSTRAINTS PURGE;
 DROP TABLE Rental CASCADE CONSTRAINTS PURGE;
+
+-- Drop views before running script.
 DROP VIEW DVDCOPYLOCATION CASCADE CONSTRAINTS;
