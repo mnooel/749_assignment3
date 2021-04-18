@@ -5,6 +5,11 @@
 
 -- Drop sequences before running script.
 DROP SEQUENCE rental_sequence;
+DROP SEQUENCE member_sequence;
+
+-- Drop procedures before running script.
+DROP PROCEDURE CHECKOUT;
+DROP PROCEDURE CHECKIN;
 
 -- Drop tables before running script.
 DROP TABLE Branch CASCADE CONSTRAINTS PURGE;
