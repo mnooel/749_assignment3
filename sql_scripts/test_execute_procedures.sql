@@ -1,0 +1,23 @@
+-- BUS-ADM 749 Data and Information Management
+-- Michael Noel
+-- Continental Palms DVD
+-- test_execute_procedures.sql
+
+-- TESTING CHECKOUT()
+-- FAIL. Member does not exist.
+BEGIN CHECKOUT( THECATALOGNO => 'D00001', THECOPYNO => 1, THEMEMBER => 12345); END;
+
+-- FAIL. DVD does not exist.
+BEGIN CHECKOUT(THECATALOGNO => 'D12345', THECOPYNO => 1, THEMEMBER => 10000); END;
+
+-- FAIL. DVDCopy does not exist.
+BEGIN CHECKOUT( THECATALOGNO => 'D00001', THECOPYNO => 25, THEMEMBER => 10000); END;
+
+-- FAIL. DVDCopy Condition is 4
+BEGIN CHECKOUT(THECATALOGNO => 'D00007', THECOPYNO => 3, THEMEMBER => 10000); END;
+
+-- SUCCESS. Conditions satisfied.
+BEGIN CHECKOUT( THECATALOGNO => 'D00001', THECOPYNO => 1, THEMEMBER => 10000); END;
+
+-- FAIL. DVDCopy already checkout.
+BEGIN CHECKOUT( THECATALOGNO => 'D00001', THECOPYNO => 1, THEMEMBER => 10000); END;
