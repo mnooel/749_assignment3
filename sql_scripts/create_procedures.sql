@@ -41,7 +41,8 @@ END;/
 CREATE OR REPLACE PROCEDURE CheckOut(
     theCatalogNo DVDCopy.catalogNo%TYPE,
     theCopyNo DVDCopy.copyNo%TYPE,
-    theMember Member.memberNo%TYPE)
+    theMember Member.memberNo%TYPE,
+    theRentalDate DATE DEFAULT SYSDATE)
 AS
     -- declare necessary variables.
     flag      NUMBER(1);
@@ -132,7 +133,7 @@ BEGIN
                             -- 1 passed as the rental number to be replaced with the rental sequence.
                             INSERT INTO RENTAL
                             (RENTALNO, CATALOGNO, COPYNO, MEMBERNO, RENTEDFROM, RENTDATE, RETURNEDTO, RETURNDATE)
-                            VALUES (1, theCatalogNo, theCopyNo, theMember, theBranch, SYSDATE, NULL, NULL);
+                            VALUES (1, theCatalogNo, theCopyNo, theMember, theBranch, theRentalDate, NULL, NULL);
 
                             -- Update the DVDCopy record to set the branchNo to null.
                             UPDATE DVDCOPY
