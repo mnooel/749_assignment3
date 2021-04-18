@@ -26,5 +26,5 @@ def insert_csv_data_into_oracle(connection: OracleConnection, tables: list):
 
 if __name__ == '__main__':
     conn = OracleConnection()
-    tables_list = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes', 'Member']
+    tables_list = ['Branch', 'Staff', 'ActorDirector', 'Member', 'DVD', 'DVDCopy', 'Makes']
     insert_csv_data_into_oracle(connection=conn, tables=tables_list)

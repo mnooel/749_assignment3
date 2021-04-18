@@ -129,3 +129,8 @@ pip-selfcheck.json
 # examples
 /examples
 
+# run configuration files
+/.run/create_procedures.sql.run.xml
+/.run/create_tables.sql.run.xml
+/.run/create_views.sql.run.xml
+/.run/tear_down_and_build.run.xml

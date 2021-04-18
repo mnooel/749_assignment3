@@ -11,6 +11,13 @@ CREATE SEQUENCE rental_sequence
     NOCYCLE
     CACHE 10;
 
+-- Create Member Sequence
+CREATE SEQUENCE member_sequence
+    INCREMENT BY 1
+    START WITH 10000
+    NOMAXVALUE
+    NOCYCLE
+    CACHE 10;
 
 -- Create Branch table
 CREATE TABLE Branch
@@ -80,18 +87,17 @@ CREATE TABLE Manager
 -- Create Member Table
 CREATE TABLE Member
 (
-    memberNo   CHAR(10),
-    firstName  VARCHAR2(15)                     NOT NULL,
-    lastName   VARCHAR2(15)                     NOT NULL,
-    street     VARCHAR2(25)                     NOT NULL,
-    city       VARCHAR2(15)                     NOT NULL,
-    state      CHAR(2)                          NOT NULL,
-    zip        CHAR(5)                          NOT NULL,
-    branchNo   CHAR(4)                          NOT NULL,
-    registDate DATE         DEFAULT SYSDATE     NOT NULL,
+    memberNo   INTEGER,
+    firstName  VARCHAR2(15)                      NOT NULL,
+    lastName   VARCHAR2(15)                      NOT NULL,
+    street     VARCHAR2(25)                      NOT NULL,
+    city       VARCHAR2(15)                      NOT NULL,
+    state      CHAR(2)                           NOT NULL,
+    zip        CHAR(5)                           NOT NULL,
+    branchNo   CHAR(4)                           NOT NULL,
+    registDate DATE         DEFAULT SYSDATE      NOT NULL,
     CONSTRAINT Member_PK PRIMARY KEY (memberNo),
-    CONSTRAINT Member_branchNo_FK FOREIGN KEY (branchNo) REFERENCES Branch (branchNo),
-    CONSTRAINT Member_memberNo_c CHECK (REGEXP_LIKE(memberNo, 'M\d{9}'))
+    CONSTRAINT Member_branchNo_FK FOREIGN KEY (branchNo) REFERENCES Branch (branchNo)
 );
 
 -- Create ActorDirector Table
@@ -167,7 +173,7 @@ CREATE TABLE Rental
     rentalNo   INTEGER,
     catalogNo  CHAR(6)      NOT NULL,
     copyNo     INTEGER      NOT NULL,
-    memberNo   CHAR(10)     NOT NULL,
+    memberNo   INTEGER      NOT NULL,
     rentedFrom CHAR(4)      NOT NULL,
     rentDate   DATE         NOT NULL,
     returnedTo CHAR(4)      DEFAULT NULL,
