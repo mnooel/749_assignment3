@@ -59,8 +59,7 @@ BEGIN
 
     -- CASCADING CONDITION CHECKS.
     -- Procedure must pass all conditions to be rentable.
-    -- After all conditions are met the insert statement is executed.
-    -- Any condition must set flag to something other than 0 if it is not satisfied.
+    -- After all conditions are met the insert/update statements are executed.
 
     -- Check to see if the member exists.
     SELECT COUNT(*)
@@ -126,9 +125,9 @@ BEGIN
                             -- All cascading conditions are satisfied.
                             SELECT DISTINCT BRANCHNO
                             INTO theBranch
-                            FROM DVDCOPY WHERE
-                            CATALOGNO = theCatalogNo
-                            AND COPYNO = theCopyNo;
+                            FROM DVDCOPY
+                            WHERE CATALOGNO = theCatalogNo
+                              AND COPYNO = theCopyNo;
                             -- Insert a Rental into the rental table.
                             -- 1 passed as the rental number to be replaced with the rental sequence.
                             INSERT INTO RENTAL
@@ -181,17 +180,35 @@ END;/
 -- the branchNo of the DVDCopy record.
 -- Note that a rental cannot be checked in multiple times.
 
-CREATE OR REPLACE PROCEDURE CheckIn(theRental Rental.rentalNo%TYPE, theBranch Branch.branchNo%TYPE)
+CREATE OR REPLACE PROCEDURE CheckIn(
+    theRental Rental.rentalNo%TYPE,
+    theBranch Branch.branchNo%TYPE,
+    theReturnDate DATE DEFAULT SYSDATE)
 AS
     -- declare necessary variables.
     flag     NUMBER(1);
     errorNo  NUMBER(5);
     errorMsg VARCHAR2(255);
     no_rental EXCEPTION;
+    date_or_to_null_check EXCEPTION;
+    branch_not_null EXCEPTION;
     no_branch EXCEPTION;
     checked_in EXCEPTION;
 
+DECLARE
+    theCatalogNo CHAR(6) := (SELECT DISTINCT CATALOGNO
+                             FROM RENTAL
+                             WHERE RENTALNO = theRental);
+    theCopyNo    INTEGER := (SELECT DISTINCT COPYNO
+                             FROM RENTAL
+                             WHERE RENTALNO = theRental);
+
 BEGIN
+
+    -- CASCADING CONDITION CHECKS.
+    -- Procedure must pass all conditions to be returnable.
+    -- After all conditions are met the update statements are executed.
+
     -- Check whether rental exists.
     SELECT COUNT(*)
     INTO flag
@@ -199,53 +216,92 @@ BEGIN
     WHERE RENTALNO = theRental;
     IF flag < 1 THEN
         RAISE no_rental;
+    ELSE
+        -- Check whether returnDate or returnBranch indicates rental outstanding.
+        SELECT COUNT(*)
+        INTO flag
+        FROM RENTAL
+        WHERE RENTALNO = theRental
+          AND ((RETURNDATE IS NULL) AND (RETURNEDTO IS NULL));
+        IF flag < 1
+        THEN
+            RAISE checked_in;
+        ELSE
+            -- Check if returnedDate is Null and returnTo is not and vice versa.
+            SELECT COUNT(*)
+            INTO flag
+            FROM RENTAL
+            WHERE ((RETURNDATE IS NULL) AND (RETURNEDTO IS NOT NULL))
+               OR ((RETURNDATE IS NOT NULL) AND (RETURNEDTO IS NULL));
+            IF flag > 0
+            THEN
+                RAISE date_or_to_null_check;
+            ELSE
+                -- Check whether the branch exists.
+                SELECT COUNT(*)
+                INTO flag
+                FROM BRANCH
+                WHERE BRANCHNO = theBranch;
+                IF flag < 1
+                THEN
+                    RAISE no_branch;
+                ELSE
+                    -- Check that the branch on DVDCopy is Null.
+                    SELECT COUNT(*)
+                    INTO flag
+                    FROM DVDCOPY
+                    WHERE CATALOGNO = theCatalogNo
+                      AND COPYNO = theCopyNo
+                      AND BRANCHNO IS NULL;
+                    IF flag < 1
+                    THEN
+                        RAISE branch_not_null;
+                    ELSE
+                        -- Update the rental record.
+                        UPDATE RENTAL
+                        SET RETURNDATE = theReturnDate,
+                            RETURNEDTO = theBranch
+                        WHERE RENTALNO = theRental;
+                        -- Update the DVDCopy.
+                        UPDATE DVDCOPY
+                        SET BRANCHNO = theBranch
+                        WHERE CATALOGNO = theCatalogNo
+                          AND COPYNO = theCopyNo;
+                        COMMIT;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
     END IF;
-
-    -- Check whether branch exists.
-    SELECT COUNT(*)
-    INTO flag
-    FROM BRANCH
-    WHERE BRANCHNO = theBranch;
-    IF flag < 1 THEN
-        RAISE no_branch;
-    END IF;
-
-    -- Check whether rental still outstanding.
-    SELECT COUNT(*)
-    INTO flag
-    FROM RENTAL
-    WHERE RENTALNO = theRental
-      AND RETURNEDTO IS NOT NULL;
-    IF flag < 1 THEN
-        RAISE checked_in;
-    END IF;
-
-    -- Pass properties to the rental.
-    UPDATE RENTAL
-    SET RETURNDATE = SYSDATE,
-        RETURNEDTO = theBranch
-    WHERE RENTALNO = theRental;
-    -- Pass properties to DVDCopy.
-    UPDATE DVDCOPY
-    SET BRANCHNO = theBranch
-    WHERE CATALOGNO = (SELECT CATALOGNO FROM RENTAL WHERE RENTALNO = theRental)
-      AND COPYNO = (SELECT COPYNO FROM RENTAL WHERE RENTALNO = theRental);
 
 EXCEPTION
-    WHEN no_rental THEN
+    WHEN
+        no_rental THEN
         RAISE_APPLICATION_ERROR(
-                -20006, CONCAT('PROCEDURE.CHECKIN EXCEPTION | The specified rental does not exist. RENTALNO: ',
-                               theRental));
-    WHEN no_branch THEN
+                -20006, 'PROCEDURE.CHECKIN EXCEPTION | The specified Rental does not exist. RENTALNO: ' || theRental);
+    WHEN
+        date_or_to_null_check THEN
         RAISE_APPLICATION_ERROR(
-                -20007, CONCAT('PROCEDURE.CHECKIN EXCEPTION | The specified branch does not exist. BRANCHNO: ',
-                               theBranch));
-    WHEN checked_in THEN
+                -20007,
+                'PROCEDURE.CHECKIN EXCEPTION | Both returnDate and returnTo for the rental must be null. RENTALNO: '
+                    || theRental);
+    WHEN
+        branch_not_null THEN
         RAISE_APPLICATION_ERROR(
-                -20008, CONCAT('PROCEDURE.CHECKIN EXCEPTION | The specified rental is already checked in. RENTALNO: ',
-                               theRental));
-
-END;/
+                -20008, 'PROCEDURE.CHECKIN EXCEPTION | The DVDCopy branchNo of the rental specified is not Null. ' ||
+                        'CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
+    WHEN
+        no_branch THEN
+        RAISE_APPLICATION_ERROR(
+                -20009, 'PROCEDURE.CHECKIN EXCEPTION | The specified branch does not exist. BRANCHNO: ' ||
+                               theBranch);
+    WHEN
+        checked_in THEN
+        RAISE_APPLICATION_ERROR(
+                -20010, 'PROCEDURE.CHECKIN EXCEPTION | The specified rental is already checked in. RENTALNO: ' ||
+                               theRental);
+END;
+/
 
 
 
