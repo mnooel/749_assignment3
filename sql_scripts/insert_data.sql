@@ -27,6 +27,10 @@ INSERT INTO ActorDirector (stageName, name, gender) VALUES ('Liv Tyler', 'Liv Ru
 INSERT INTO ActorDirector (stageName, name, gender) VALUES ('Steven Spielberg', 'Steven A Spielberg', 'M');
 INSERT INTO ActorDirector (stageName, name, gender) VALUES ('Bruce Lee', 'Bruce Lee', 'M');
 
+-- Insert Member data
+INSERT INTO Member (memberNo, firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES (1, 'Min', 'Zhao', '100 W Bradley St', 'Milwaukee', 'WI', '53217', 'WI02', '10-OCT-2002');
+INSERT INTO Member (memberNo, firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES (2, 'Michael', 'Noel', 'N53W14170 Invery Dr', 'Menomonee Falls', 'WI', '53051', 'WI01', '11-NOV-2020');
+
 -- Insert DVD data
 INSERT INTO DVD (catalogNo, title, category, dailyRent) VALUES ('D00001', 'Forrest Gump', 'drama', 1.99);
 INSERT INTO DVD (catalogNo, title, category, dailyRent) VALUES ('D00002', 'That Thing You Do!', 'drama', 1.99);
