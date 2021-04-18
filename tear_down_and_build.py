@@ -14,5 +14,5 @@ if __name__ == '__main__':
     create_tables(connection=conn)
     create_views(connection=conn)
     create_procedures(connection=conn)
-    tables_list = ['Branch', 'Staff', 'ActorDirector', 'DVD', 'DVDCopy', 'Makes']
+    tables_list = ['Branch', 'Staff', 'ActorDirector', 'Member', 'DVD', 'DVDCopy', 'Makes']
     insert_csv_data_into_oracle(connection=conn, tables=tables_list)
