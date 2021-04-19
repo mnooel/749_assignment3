@@ -1,3 +1,5 @@
-memberNo,firstName,lastName,street,city,state,zip,branchNo,registDate
-1,Min,Zhao,100 W Bradley St,Milwaukee,WI,53217,WI02,10-OCT-2002
-2,Michael,Noel,N53W14170 Invery Dr,Menomonee Falls,WI,53051,WI01,11-NOV-2020
+firstName,lastName,street,city,state,zip,branchNo,registDate
+Min,Zhao,100 W Bradley St,Milwaukee,WI,53217,WI02,10-OCT-2002
+Julia,Wilson,200 E Calumet,Milwaukee,WI,53216,WI02,11-OCT-2004
+Julia,Wilson,200 E Calumet,Milwaukee,WI,53216,WI01,11-OCT-2004
+Michael,Noel,N53W14170 Invery Dr,Menomonee Falls,WI,53051,WI01,11-NOV-2020

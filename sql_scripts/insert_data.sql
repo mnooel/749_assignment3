@@ -28,8 +28,10 @@ INSERT INTO ActorDirector (stageName, name, gender) VALUES ('Steven Spielberg', 
 INSERT INTO ActorDirector (stageName, name, gender) VALUES ('Bruce Lee', 'Bruce Lee', 'M');
 
 -- Insert Member data
-INSERT INTO Member (memberNo, firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES (1, 'Min', 'Zhao', '100 W Bradley St', 'Milwaukee', 'WI', '53217', 'WI02', '10-OCT-2002');
-INSERT INTO Member (memberNo, firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES (2, 'Michael', 'Noel', 'N53W14170 Invery Dr', 'Menomonee Falls', 'WI', '53051', 'WI01', '11-NOV-2020');
+INSERT INTO Member (firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES ('Min', 'Zhao', '100 W Bradley St', 'Milwaukee', 'WI', 53217, 'WI02', '10-OCT-2002');
+INSERT INTO Member (firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES ('Julia', 'Wilson', '200 E Calumet', 'Milwaukee', 'WI', 53216, 'WI02', '11-OCT-2004');
+INSERT INTO Member (firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES ('Julia', 'Wilson', '200 E Calumet', 'Milwaukee', 'WI', 53216, 'WI01', '11-OCT-2004');
+INSERT INTO Member (firstName, lastName, street, city, state, zip, branchNo, registDate) VALUES ('Michael', 'Noel', 'N53W14170 Invery Dr', 'Menomonee Falls', 'WI', 53051, 'WI01', '11-NOV-2020');
 
 -- Insert DVD data
 INSERT INTO DVD (catalogNo, title, category, dailyRent) VALUES ('D00001', 'Forrest Gump', 'drama', 1.99);

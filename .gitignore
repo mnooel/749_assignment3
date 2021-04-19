@@ -134,3 +134,7 @@ pip-selfcheck.json
 /.run/create_tables.sql.run.xml
 /.run/create_views.sql.run.xml
 /.run/tear_down_and_build.run.xml
+/.run/drop_tables.sql.run.xml
+/.run/create_table.sql.run.xml
+/.run/insert_data.sql.run.xml
+/.run/test_execute_procedures.sql.run.xml

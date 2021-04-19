@@ -4,35 +4,6 @@
 -- create_procedures.sql
 
 
--- TRIGGER
--- I wanted to try my hand out at using sequences.
--- In create_table.sql I have define a sequence for rental. In drop_tables.sql I drop it for testing purposes.
--- I also defined a sequence for members.
--- The trigger should use the next val of the sequence when a rental is inserted.
--- Note that in the test data for assignment 4 the rental number is a type char(6).
---      I am using an integer.
-
-CREATE OR REPLACE TRIGGER rental_on_insert
-    BEFORE INSERT
-    ON RENTAL
-    FOR EACH ROW
-BEGIN
-    SELECT RENTAL_SEQUENCE.nextval
-    INTO :new.rentalNo
-    FROM DUAL;
-END;/
-
-CREATE OR REPLACE TRIGGER member_on_insert
-    BEFORE INSERT
-    ON MEMBER
-    FOR EACH ROW
-BEGIN
-    SELECT MEMBER_SEQUENCE.nextval
-    INTO :new.memberNo
-    FROM DUAL;
-END;/
-
-
 -- EXTRA PROCEDURE checkOut. Placed before CheckIn since it's the logical sequence of events.
 -- Write a procedure named checkOut to checks out a DVDCopy.
 -- The procedure takes four parameters: the memberNo, the branchNo, the catalogNo and the copyNo.
@@ -131,8 +102,8 @@ BEGIN
                             -- Insert a Rental into the rental table.
                             -- 1 passed as the rental number to be replaced with the rental sequence.
                             INSERT INTO RENTAL
-                            (RENTALNO, CATALOGNO, COPYNO, MEMBERNO, RENTEDFROM, RENTDATE, RETURNEDTO, RETURNDATE)
-                            VALUES (1, theCatalogNo, theCopyNo, theMember, theBranch, theRentalDate, NULL, NULL);
+                            (CATALOGNO, COPYNO, MEMBERNO, RENTEDFROM, RENTDATE, RETURNEDTO, RETURNDATE)
+                            VALUES (theCatalogNo, theCopyNo, theMember, theBranch, theRentalDate, NULL, NULL);
 
                             -- Update the DVDCopy record to set the branchNo to null.
                             UPDATE DVDCOPY
@@ -153,23 +124,25 @@ BEGIN
 EXCEPTION
     WHEN no_member THEN
         RAISE_APPLICATION_ERROR(
-                -20001, 'PROCEDURE.CHECKOUT EXCEPTION | The specified Member does not exist. MEMBERNO: ' || theMember);
+                -20001, 'The specified Member does not exist.'
+            || ' MEMBERNO: ' || theMember);
     WHEN no_dvd THEN
         RAISE_APPLICATION_ERROR(
-                -20002, 'PROCEDURE.CHECKOUT EXCEPTION | The specified DVD does not exist. CATALOGNO: ' || theCatalogNo);
+                -20002, 'The specified DVD does not exist.'
+            || ' CATALOGNO: ' || theCatalogNo);
     WHEN no_copy THEN
         RAISE_APPLICATION_ERROR(
-                -20003, 'PROCEDURE.CHECKOUT EXCEPTION | The specified DVDCopy does not exist. CATALOGNO: '
-            || theCatalogNo || ' COPYNO: ' || theCopyNo);
+                -20003, 'The specified DVDCopy does not exist.'
+            || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
     WHEN checked_out THEN
         RAISE_APPLICATION_ERROR(
-                -20004, 'PROCEDURE.CHECKOUT EXCEPTION | The specified DVDCopy is already checked out. CATALOGNO: '
-            || theCatalogNo || ' COPYNO: ' || theCopyNo);
+                -20004, 'The specified DVDCopy is already checked out.'
+            || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
     WHEN copy_broken THEN
         RAISE_APPLICATION_ERROR(
                 -20005,
-                'PROCEDURE.CHECKOUT EXCEPTION | The specified DVDCopy is broken and cannot be rented. CATALOGNO: '
-                    || theCatalogNo || ' COPYNO: ' || theCopyNo);
+                'The specified DVDCopy is broken and cannot be rented.'
+                    || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
 END;/
 
 
@@ -186,22 +159,16 @@ CREATE OR REPLACE PROCEDURE CheckIn(
     theReturnDate DATE DEFAULT SYSDATE)
 AS
     -- declare necessary variables.
-    flag     NUMBER(1);
-    errorNo  NUMBER(5);
-    errorMsg VARCHAR2(255);
+    flag         NUMBER(1);
+    errorNo      NUMBER(5);
+    errorMsg     VARCHAR2(255);
+    theCatalogNo CHAR(6);
+    theCopyNo    INTEGER;
     no_rental EXCEPTION;
     date_or_to_null_check EXCEPTION;
     branch_not_null EXCEPTION;
     no_branch EXCEPTION;
     checked_in EXCEPTION;
-
-DECLARE
-    theCatalogNo CHAR(6) := (SELECT DISTINCT CATALOGNO
-                             FROM RENTAL
-                             WHERE RENTALNO = theRental);
-    theCopyNo    INTEGER := (SELECT DISTINCT COPYNO
-                             FROM RENTAL
-                             WHERE RENTALNO = theRental);
 
 BEGIN
 
@@ -217,26 +184,38 @@ BEGIN
     IF flag < 1 THEN
         RAISE no_rental;
     ELSE
-        -- Check whether returnDate or returnBranch indicates rental outstanding.
+        -- Check if returnedDate is Null and returnTo is not and vice versa.
         SELECT COUNT(*)
         INTO flag
         FROM RENTAL
-        WHERE RENTALNO = theRental
-          AND ((RETURNDATE IS NULL) AND (RETURNEDTO IS NULL));
-        IF flag < 1
+        WHERE ((RETURNDATE IS NULL) AND (RETURNEDTO IS NOT NULL))
+           OR ((RETURNDATE IS NOT NULL) AND (RETURNEDTO IS NULL));
+        IF flag > 0
         THEN
-            RAISE checked_in;
+            RAISE date_or_to_null_check;
         ELSE
-            -- Check if returnedDate is Null and returnTo is not and vice versa.
+            -- Check whether returnDate and returnBranch indicates rental is NOT checked in.
             SELECT COUNT(*)
             INTO flag
             FROM RENTAL
-            WHERE ((RETURNDATE IS NULL) AND (RETURNEDTO IS NOT NULL))
-               OR ((RETURNDATE IS NOT NULL) AND (RETURNEDTO IS NULL));
-            IF flag > 0
-            THEN
-                RAISE date_or_to_null_check;
+            WHERE RENTALNO = theRental
+              AND ((RETURNDATE IS NULL) AND (RETURNEDTO IS NULL));
+            IF flag <> 1 THEN
+                RAISE checked_in;
             ELSE
+                -- RENTAL exists, not checked in via both returnedTo and returnedDate.
+                -- RENTALNO is unique so it's known that only one rental record exists at this point.
+                -- Set useful Variables.
+                BEGIN
+                    SELECT DISTINCT CATALOGNO
+                        INTO theCatalogNo
+                    FROM RENTAL
+                        WHERE RENTALNO = theRental;
+                    SELECT DISTINCT COPYNO
+                        INTO theCopyNo
+                    FROM RENTAL
+                        WHERE RENTALNO = theRental;
+                END;
                 -- Check whether the branch exists.
                 SELECT COUNT(*)
                 INTO flag
@@ -257,16 +236,20 @@ BEGIN
                     THEN
                         RAISE branch_not_null;
                     ELSE
+
                         -- Update the rental record.
                         UPDATE RENTAL
                         SET RETURNDATE = theReturnDate,
                             RETURNEDTO = theBranch
                         WHERE RENTALNO = theRental;
+
                         -- Update the DVDCopy.
                         UPDATE DVDCOPY
                         SET BRANCHNO = theBranch
                         WHERE CATALOGNO = theCatalogNo
                           AND COPYNO = theCopyNo;
+
+                        -- Commit the updates.
                         COMMIT;
                     END IF;
                 END IF;
@@ -278,28 +261,28 @@ EXCEPTION
     WHEN
         no_rental THEN
         RAISE_APPLICATION_ERROR(
-                -20006, 'PROCEDURE.CHECKIN EXCEPTION | The specified Rental does not exist. RENTALNO: ' || theRental);
+                -20006, 'The specified Rental does not exist.'
+            || ' RENTALNO: ' || theRental);
     WHEN
         date_or_to_null_check THEN
         RAISE_APPLICATION_ERROR(
-                -20007,
-                'PROCEDURE.CHECKIN EXCEPTION | Both returnDate and returnTo for the rental must be null. RENTALNO: '
-                    || theRental);
+                -20007, 'Both returnDate and returnTo for the rental must be null. '
+            || 'RENTALNO: ' || theRental);
     WHEN
         branch_not_null THEN
         RAISE_APPLICATION_ERROR(
-                -20008, 'PROCEDURE.CHECKIN EXCEPTION | The DVDCopy branchNo of the rental specified is not Null. ' ||
-                        'CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
+                -20008, 'The DVDCopy branchNo of the rental specified is not Null. '
+            || 'CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
     WHEN
         no_branch THEN
         RAISE_APPLICATION_ERROR(
-                -20009, 'PROCEDURE.CHECKIN EXCEPTION | The specified branch does not exist. BRANCHNO: ' ||
-                               theBranch);
+                -20009, 'The specified branch does not exist. '
+            || 'BRANCHNO: ' || theBranch);
     WHEN
         checked_in THEN
         RAISE_APPLICATION_ERROR(
-                -20010, 'PROCEDURE.CHECKIN EXCEPTION | The specified rental is already checked in. RENTALNO: ' ||
-                               theRental);
+                -20010, 'The specified rental is already checked in. '
+            || 'RENTALNO: ' || theRental);
 END;
 /
 
@@ -309,7 +292,6 @@ END;
 -- Write a function named RentalAmount to calculate the total amount of a rental.
 -- The function takes the rental number as input and returns the total amount.
 -- If the rental has not been returned yet, use the current date as the ending date for the calculation.
-
 
 
 -- TRIGGER

@@ -3,21 +3,21 @@
 -- Continental Palms DVD
 -- create_tables.sql
 
--- Create Rental Sequence
-CREATE SEQUENCE rental_sequence
-    INCREMENT BY 1
-    START WITH 100000
-    NOMAXVALUE
-    NOCYCLE
-    CACHE 10;
-
--- Create Member Sequence
-CREATE SEQUENCE member_sequence
-    INCREMENT BY 1
-    START WITH 10000
-    NOMAXVALUE
-    NOCYCLE
-    CACHE 10;
+-- -- Create Rental Sequence
+-- CREATE SEQUENCE rental_sequence
+--     INCREMENT BY 1
+--     START WITH 100000
+--     NOMAXVALUE
+--     NOCYCLE
+--     CACHE 10;
+--
+-- -- Create Member Sequence
+-- CREATE SEQUENCE member_sequence
+--     INCREMENT BY 1
+--     START WITH 10000
+--     NOMAXVALUE
+--     NOCYCLE
+--     CACHE 10;
 
 -- Create Branch table
 CREATE TABLE Branch
@@ -87,7 +87,7 @@ CREATE TABLE Manager
 -- Create Member Table
 CREATE TABLE Member
 (
-    memberNo   INTEGER,
+    memberNo   INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 10000 INCREMENT BY 1),
     firstName  VARCHAR2(15)                      NOT NULL,
     lastName   VARCHAR2(15)                      NOT NULL,
     street     VARCHAR2(25)                      NOT NULL,
@@ -170,7 +170,7 @@ CREATE TABLE DVDCopy
 -- Create Rental Table
 CREATE TABLE Rental
 (
-    rentalNo   INTEGER,
+    rentalNo   INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 100000 INCREMENT BY 1),
     catalogNo  CHAR(6)      NOT NULL,
     copyNo     INTEGER      NOT NULL,
     memberNo   INTEGER      NOT NULL,
