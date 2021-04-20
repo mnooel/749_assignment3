@@ -51,7 +51,8 @@ CREATE TABLE Staff
     CONSTRAINT Staff_supervisor_FK FOREIGN KEY (supervisor) REFERENCES Staff (staffNo),
     CONSTRAINT Staff_salary_c CHECK (salary > 0),
     CONSTRAINT Staff_pos_c CHECK (position IN ('manager', 'supervisor', 'assistant')),
-    CONSTRAINT Staff_sup_c CHECK (position <> 'manager' OR supervisor IS NULL)
+    CONSTRAINT Staff_sup_c1 CHECK (position <> 'manager' OR supervisor IS NULL),
+    CONSTRAINT Staff_sup_c2 CHECK (staffNo <> supervisor)
 );
 
 -- Create Manager Table
