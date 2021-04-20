@@ -318,11 +318,16 @@ AS
     -- declare necessary variables.
     theBranchNo CHAR(4);
     isCheckedOut EXCEPTION;
+    futureRental EXCEPTION;
 
 BEGIN
 
     IF fx_CheckedOut(theCatalogNo, theCopyNo) THEN
         RAISE isCheckedOut;
+
+    -- NOTE. This might break due to differences in processing time. Testing indicated it would not.
+    ELSIF theRentalDate - SYSDATE > 0 THEN
+        RAISE futureRental;
     ELSIF NOT fx_DVDCopyBroken(theCatalogNo, theCopyNo) THEN
         -- Set theBranchNo variable to the DVDCopy.branchNo.
         SELECT DISTINCT BRANCHNO
@@ -350,6 +355,9 @@ EXCEPTION
     WHEN isCheckedOut THEN
         RAISE_APPLICATION_ERROR(-20009, 'DVDCopy is currently checked out.' ||
                                         ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
+    WHEN futureRental THEN
+        RAISE_APPLICATION_ERROR(-20023, 'The RentalDate may not be in the future:' ||
+                                        ' TODAY: ' || SYSDATE || ' THERENTALDATE: ' || theRentalDate);
 END;
 
 
@@ -367,9 +375,10 @@ CREATE OR REPLACE PROCEDURE proc_CheckIn(theCatalogNo DVDCopy.catalogNo%TYPE,
                                          theReturnDate DATE DEFAULT SYSDATE)
 AS
     -- Declare necessary variables.
-    theRentalNo INTEGER := fx_LastRentalNo(theCatalogNo, theCopyNo);
-    noRental EXCEPTION;
-    isCheckedIn EXCEPTION;
+    theRentalNo     INTEGER := fx_LastRentalNo(theCatalogNo, theCopyNo);
+    noRental        EXCEPTION;
+    isCheckedIn     EXCEPTION;
+    futureReturn    EXCEPTION;
 
 BEGIN
 
@@ -378,6 +387,8 @@ BEGIN
         RAISE isCheckedIn;
     ELSIF theRentalNo IS NULL THEN
         RAISE noRental;
+    ELSIF theReturnDate - SYSDATE > 0 THEN
+        RAISE futureReturn;
     ELSE
         -- Update the rental record.
         UPDATE RENTAL
@@ -403,6 +414,10 @@ EXCEPTION
                                     ' CATALOGNO: ' || theCatalogNo ||
                                     ' COPYNO: ' || theCopyNo);
 
+    WHEN futureReturn THEN
+    RAISE_APPLICATION_ERROR(-20023, 'The ReturnDate may not be in the future:' ||
+                                        ' TODAY: ' || SYSDATE || ' THERETURNDATE: ' || theReturnDate);
+
 END;
 
 
@@ -410,6 +425,46 @@ END;
 -- Write a function named RentalAmount to calculate the total amount of a rental.
 -- The function takes the rental number as input and returns the total amount.
 -- If the rental has not been returned yet, use the current date as the ending date for the calculation.
+CREATE OR REPLACE FUNCTION fx_RentalAmount(theRentalNo Rental.rentalNo%TYPE)
+RETURN FLOAT
+
+AS
+    -- Declare necessary variables.
+    theCatalogNo    CHAR(6) := NULL;
+    theRentalRate   FLOAT   := NULL;
+    theReturnDate   DATE    := fx_ReturnRentalEndDate(theRentalNo);
+    theRentDate     DATE    := NULL;
+    totalAmount     FLOAT := NULL;
+
+
+BEGIN
+
+    -- Set theCatalogNo to query theRentalRate.
+    SELECT
+        DISTINCT CATALOGNO
+        INTO theCatalogNo
+    FROM RENTAL
+        WHERE RENTALNO = theRentalNo;
+
+    -- Set theRentalRate.
+    SELECT
+        DISTINCT DAILYRENT
+        INTO theRentalRate
+    FROM DVD
+        WHERE CATALOGNO = theCatalogNo;
+
+    -- Set theRentalDate.
+    SELECT
+        DISTINCT RENTDATE
+        INTO theRentDate
+    FROM RENTAL
+        WHERE RENTALNO = theRentalNo;
+
+    -- Calculate the total amount of the rental. Partial days = 1 day.
+    totalAmount := (CEIL((theReturnDate - theRentDate)) + 1) * theRentalRate;
+
+    RETURN(totalAmount);
+END;
 
 
 -- TRIGGER
