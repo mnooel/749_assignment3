@@ -3,22 +3,6 @@
 -- Continental Palms DVD
 -- create_tables.sql
 
--- -- Create Rental Sequence
--- CREATE SEQUENCE rental_sequence
---     INCREMENT BY 1
---     START WITH 100000
---     NOMAXVALUE
---     NOCYCLE
---     CACHE 10;
---
--- -- Create Member Sequence
--- CREATE SEQUENCE member_sequence
---     INCREMENT BY 1
---     START WITH 10000
---     NOMAXVALUE
---     NOCYCLE
---     CACHE 10;
-
 -- Create Branch table
 CREATE TABLE Branch
 (
