@@ -185,12 +185,12 @@ BEGIN
             theResult := TRUE;
             -- Error - DVDCopy.branchNo must be NULL if theReturnTo is NULL AND theReturnDate is NULL.
         ELSIF theBranchNo IS NOT NULL AND (theReturnedTo IS NULL OR theReturnDate IS NULL) THEN
-            RAISE_APPLICATION_ERROR(-20005,
+            RAISE_APPLICATION_ERROR(-20006,
                                     'DVDCOPY.BRANCHNO: ' || theBranchNo ||
                                     ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
                                     ' RENTAL.RETURNDATE: ' || theReturnDate);
         ELSIF theBranchNo IS NULL AND (theReturnedTo IS NOT NULL OR theReturnDate IS NOT NULL) THEN
-            RAISE_APPLICATION_ERROR(-20005,
+            RAISE_APPLICATION_ERROR(-20006,
                                     'DVDCOPY.BRANCHNO: ' || theBranchNo ||
                                     ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
                                     ' RENTAL.RETURNDATE: ' || theReturnDate);
@@ -199,8 +199,9 @@ BEGIN
             theResult := FALSE;
             -- Some strange condition passed through unchecked.
         ELSE
-            RAISE_APPLICATION_ERROR(-20006,
+            RAISE_APPLICATION_ERROR(-20007,
                                     'UNKNWON HUGE CONDITIONAL OVERSIGHT ERROR IN CHECKEDOUT FUNCTION. ' ||
+                                    'THIS ABSOLUTELY SHOULD NOT HAPPEN GIVEN THE RENTAL_RETURN_C CONSTRAINT. ' ||
                                     'DVDCOPY.BRANCHNO: ' || theBranchNo ||
                                     ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
                                     ' RENTAL.RETURNDATE: ' || theReturnDate);
@@ -237,7 +238,7 @@ BEGIN
         IF theCondition < 4 THEN
             theResult := FALSE;
         ELSE
-            RAISE_APPLICATION_ERROR(-20007, 'The DVDCopy specified is currently broken.' ||
+            RAISE_APPLICATION_ERROR(-20008, 'The DVDCopy specified is currently broken.' ||
                                             ' CATALOGNO: ' || theCatalogNo ||
                                             ' COPYNO: ' || theCopyNo ||
                                             ' CONDITON: ' || theCondition);
@@ -252,11 +253,10 @@ END;
 -- Create a function to determine that a startDate is before an endDate
 CREATE OR REPLACE FUNCTION fx_StartBeforeEnd(theStartDate DATE, theEndDate DATE)
     RETURN BOOLEAN
-
 AS
     -- Declare necessary variables
-    timeDelta   NUMBER := theStartDate - theEndDate;
-    theResult   BOOLEAN;
+    timeDelta NUMBER := theStartDate - theEndDate;
+    theResult BOOLEAN;
 
 BEGIN
 
@@ -264,12 +264,12 @@ BEGIN
     IF timeDelta < 0 THEN
         theResult := TRUE;
     ELSE
-        RAISE_APPLICATION_ERROR(-20008, 'Provided StartDate must be before EndDate. ' ||
+        RAISE_APPLICATION_ERROR(-20009, 'Provided StartDate must be before EndDate. ' ||
                                         ' THESTARTDATE: ' || theStartDate ||
                                         ' THEENDDATE: ' || theEndDate);
     END IF;
 
-    RETURN(theResult);
+    RETURN (theResult);
 
 END;
 
@@ -279,11 +279,10 @@ END;
 -- If the rental is outstanding return the SYSDATE.
 CREATE OR REPLACE FUNCTION fx_ReturnRentalEndDate(theRentalNo Rental.rentalNo%TYPE)
     RETURN DATE
-
 AS
     -- Declare necessary variables.
-    theResult       DATE := SYSDATE;
-    theReturnDate   DATE := NULL;
+    theResult     DATE := SYSDATE;
+    theReturnDate DATE := NULL;
 
 
 BEGIN
@@ -291,16 +290,16 @@ BEGIN
     -- Check to see if the rental Exists.
     IF fx_RentalExists(theRentalNo) THEN
         SELECT DISTINCT RETURNDATE
-            INTO theReturnDate
+        INTO theReturnDate
         FROM RENTAL
-            WHERE RENTALNO = theRentalNo;
+        WHERE RENTALNO = theRentalNo;
     END IF;
     -- If the rental is returned theReturnDate IS NOT NULL.
     IF theReturnDate IS NOT NULL THEN
         theResult := theReturnDate;
     END IF;
 
-    RETURN(theResult);
+    RETURN (theResult);
 END;
 
 
@@ -308,7 +307,6 @@ END;
 -- Write a procedure named checkOut to checks out a DVDCopy.
 -- The procedure takes four parameters: the memberNo, the branchNo, the catalogNo and the copyNo.
 -- Since rentalNo is auto sequenced then we should not need a rental number.
-
 CREATE OR REPLACE PROCEDURE proc_CheckOut(
     theCatalogNo DVDCopy.catalogNo%TYPE,
     theCopyNo DVDCopy.copyNo%TYPE,
@@ -325,7 +323,7 @@ BEGIN
     IF fx_CheckedOut(theCatalogNo, theCopyNo) THEN
         RAISE isCheckedOut;
 
-    -- NOTE. This might break due to differences in processing time. Testing indicated it would not.
+        -- NOTE. This might break due to differences in processing time. Testing indicated it would not.
     ELSIF theRentalDate - SYSDATE > 0 THEN
         RAISE futureRental;
     ELSIF NOT fx_DVDCopyBroken(theCatalogNo, theCopyNo) THEN
@@ -353,10 +351,10 @@ BEGIN
 EXCEPTION
 
     WHEN isCheckedOut THEN
-        RAISE_APPLICATION_ERROR(-20009, 'DVDCopy is currently checked out.' ||
+        RAISE_APPLICATION_ERROR(-20010, 'DVDCopy is currently checked out.' ||
                                         ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
     WHEN futureRental THEN
-        RAISE_APPLICATION_ERROR(-20023, 'The RentalDate may not be in the future:' ||
+        RAISE_APPLICATION_ERROR(-20011, 'The RentalDate may not be in the future:' ||
                                         ' TODAY: ' || SYSDATE || ' THERENTALDATE: ' || theRentalDate);
 END;
 
@@ -367,7 +365,6 @@ END;
 -- The procedure should fill in the returnedTo and returnDate attributes of the Rental record and update the \
 -- the branchNo of the DVDCopy record.
 -- Note that a rental cannot be checked in multiple times.
-
 CREATE OR REPLACE PROCEDURE proc_CheckIn(theCatalogNo DVDCopy.catalogNo%TYPE,
                                          theCopyNo DVDCopy.copyNo%TYPE,
                                          theCondition DVDCopy.condition%TYPE,
@@ -375,10 +372,10 @@ CREATE OR REPLACE PROCEDURE proc_CheckIn(theCatalogNo DVDCopy.catalogNo%TYPE,
                                          theReturnDate DATE DEFAULT SYSDATE)
 AS
     -- Declare necessary variables.
-    theRentalNo     INTEGER := fx_LastRentalNo(theCatalogNo, theCopyNo);
-    noRental        EXCEPTION;
-    isCheckedIn     EXCEPTION;
-    futureReturn    EXCEPTION;
+    theRentalNo INTEGER := fx_LastRentalNo(theCatalogNo, theCopyNo);
+    noRental EXCEPTION;
+    isCheckedIn EXCEPTION;
+    futureReturn EXCEPTION;
 
 BEGIN
 
@@ -398,7 +395,7 @@ BEGIN
 
         -- Update the DVDCopy.
         UPDATE DVDCOPY
-        SET BRANCHNO = theBranchNo,
+        SET BRANCHNO  = theBranchNo,
             CONDITION = theCondition
         WHERE CATALOGNO = theCatalogNo
           AND COPYNO = theCopyNo;
@@ -406,16 +403,16 @@ BEGIN
 
 EXCEPTION
     WHEN noRental THEN
-    RAISE_APPLICATION_ERROR(-20010, 'The DVDCopy has never been rented.' ||
-                                    ' CATALOGNO: ' || theCatalogNo ||
-                                    ' COPYNO: ' || theCopyNo);
+        RAISE_APPLICATION_ERROR(-20012, 'The DVDCopy has never been rented.' ||
+                                        ' CATALOGNO: ' || theCatalogNo ||
+                                        ' COPYNO: ' || theCopyNo);
     WHEN isCheckedIn THEN
-    RAISE_APPLICATION_ERROR(-20011, 'The DVDCopy has already been checked in.' ||
-                                    ' CATALOGNO: ' || theCatalogNo ||
-                                    ' COPYNO: ' || theCopyNo);
+        RAISE_APPLICATION_ERROR(-20013, 'The DVDCopy has already been checked in.' ||
+                                        ' CATALOGNO: ' || theCatalogNo ||
+                                        ' COPYNO: ' || theCopyNo);
 
     WHEN futureReturn THEN
-    RAISE_APPLICATION_ERROR(-20023, 'The ReturnDate may not be in the future:' ||
+        RAISE_APPLICATION_ERROR(-20014, 'The ReturnDate may not be in the future:' ||
                                         ' TODAY: ' || SYSDATE || ' THERETURNDATE: ' || theReturnDate);
 
 END;
@@ -426,44 +423,40 @@ END;
 -- The function takes the rental number as input and returns the total amount.
 -- If the rental has not been returned yet, use the current date as the ending date for the calculation.
 CREATE OR REPLACE FUNCTION fx_RentalAmount(theRentalNo Rental.rentalNo%TYPE)
-RETURN FLOAT
-
+    RETURN FLOAT
 AS
     -- Declare necessary variables.
-    theCatalogNo    CHAR(6) := NULL;
-    theRentalRate   FLOAT   := NULL;
-    theReturnDate   DATE    := fx_ReturnRentalEndDate(theRentalNo);
-    theRentDate     DATE    := NULL;
-    totalAmount     FLOAT := NULL;
+    theCatalogNo  CHAR(6) := NULL;
+    theRentalRate FLOAT   := NULL;
+    theReturnDate DATE    := fx_ReturnRentalEndDate(theRentalNo);
+    theRentDate   DATE    := NULL;
+    totalAmount   FLOAT   := NULL;
 
 
 BEGIN
 
     -- Set theCatalogNo to query theRentalRate.
-    SELECT
-        DISTINCT CATALOGNO
-        INTO theCatalogNo
+    SELECT DISTINCT CATALOGNO
+    INTO theCatalogNo
     FROM RENTAL
-        WHERE RENTALNO = theRentalNo;
+    WHERE RENTALNO = theRentalNo;
 
     -- Set theRentalRate.
-    SELECT
-        DISTINCT DAILYRENT
-        INTO theRentalRate
+    SELECT DISTINCT DAILYRENT
+    INTO theRentalRate
     FROM DVD
-        WHERE CATALOGNO = theCatalogNo;
+    WHERE CATALOGNO = theCatalogNo;
 
     -- Set theRentalDate.
-    SELECT
-        DISTINCT RENTDATE
-        INTO theRentDate
+    SELECT DISTINCT RENTDATE
+    INTO theRentDate
     FROM RENTAL
-        WHERE RENTALNO = theRentalNo;
+    WHERE RENTALNO = theRentalNo;
 
     -- Calculate the total amount of the rental. Partial days = 1 day.
-    totalAmount := (CEIL((theReturnDate - theRentDate)) + 1) * theRentalRate;
+    totalAmount := (CEIL((theReturnDate - theRentDate))) * theRentalRate;
 
-    RETURN(totalAmount);
+    RETURN (totalAmount);
 END;
 
 
@@ -472,3 +465,72 @@ END;
 --      1. A staff member can supervise up to 10 others.
 --      2. A staff member who supervises others is in the position of supervisor or manager.
 --      3. The staff supervision relationship is hierarchical up to three levels.
+CREATE OR REPLACE TRIGGER TRIG_StaffHandlingTooMuch
+    BEFORE INSERT OR UPDATE
+    ON Staff
+
+    FOR EACH ROW
+DECLARE
+    -- Declare Necessary Variables.
+    -- 1. A staff member can supervise up to 10 others.
+    nSubordinates   NUMBER;
+
+    -- 2. A staff member who supervises others is in the position of supervisor or manager.
+    supPos          Staff.position%TYPE;
+
+    --  3. The staff supervision relationship is hierarchical up to three levels.
+    supCount        NUMBER;
+    super           Staff.supervisor%TYPE;
+
+BEGIN
+
+    --  1. A staff member can supervise up to 10 others.
+    IF :NEW.supervisor IS NOT NULL THEN
+        SELECT COUNT(*)
+            INTO nSubordinates
+        FROM STAFF
+        WHERE SUPERVISOR = :NEW.supervisor;
+        IF nSubordinates > 9 THEN
+            RAISE_APPLICATION_ERROR(-20015, 'A supervisor may not oversee more than 10 other staff.' ||
+                                            ' SUPERVISOR: ' || :NEW.supervisor || 'N_SUPERVISING' || nSubordinates);
+        END IF;
+    END IF;
+
+    --  2. A staff member who supervises others is in the position of supervisor or manager.
+    IF :NEW.position = 'manager' THEN
+        RETURN;
+    ELSE
+        SELECT POSITION
+        INTO supPos
+        FROM STAFF
+        WHERE STAFFNO = :NEW.supervisor;
+        IF NOT (supPos = 'manager' OR supPos = 'supervisor') THEN
+            RAISE_APPLICATION_ERROR(-20016, 'The supervisor specified is not in a position of manager or supervisor.' ||
+                                            ' SUPERVISOR: ' || :NEW.SUPERVISOR);
+        END IF;
+    END IF;
+
+    --  3. The staff supervision relationship is hierarchical up to three levels.
+    IF :NEW.position = 'manger' AND :NEW.supervisor IS NOT NULL THEN
+        RAISE_APPLICATION_ERROR(-20017, 'A staff member specified is a manager and cannot have a supervisor.' ||
+                                        ' STAFFNO: ' || :NEW.STAFFNO);
+    ELSIF :NEW.position <> 'manager' THEN
+        -- go for a loop ride.
+        supCount := 1;
+        super := :NEW.supervisor;
+        WHILE supCount <= 3 AND super is NOT NULL
+            LOOP
+                SELECT supervisor
+                INTO super
+                FROM STAFF
+                WHERE STAFFNO = super;
+                supCount := supCount + 1;
+            END LOOP;
+    END IF;
+
+    IF supCount > 3 THEN
+        RAISE_APPLICATION_ERROR(-20018, 'The staff supervisor relationship is higher than 3.');
+    END IF;
+
+END;
+
