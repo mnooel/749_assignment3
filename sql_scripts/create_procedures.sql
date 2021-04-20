@@ -97,6 +97,28 @@ BEGIN
 END;
 
 
+-- Create a function to determine if the rental exists.
+CREATE OR REPLACE FUNCTION fx_RentalExists(theRentalNo Rental.rentalNo%TYPE)
+    RETURN BOOLEAN
+AS
+    -- Declare necessary variables.
+    flag NUMBER(1);
+
+BEGIN
+    SELECT COUNT(*)
+    INTO flag
+    FROM RENTAL
+    WHERE RENTALNO = theRentalNo;
+    IF flag < 1 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'The Rental specified not exist.' ||
+                                        ' RENTALNO: ' || theRentalNo);
+    END IF;
+
+    RETURN (TRUE);
+
+END;
+
+
 -- Create a function to return the last rentalNo or null for a DVDCopy.
 -- If a rental has been made for a DVDCopy previously return the rentalNo of the last rental.
 -- Else return NULL is there has never been a rental for the DVDCopy.
@@ -227,24 +249,59 @@ BEGIN
 END;
 
 
--- Write a test function function to check if the other functions are working.
-CREATE OR REPLACE FUNCTION fx_FunFunTest(theCatalogNo DVDCopy.catalogNo%TYPE,
-                                         theCopyNo DVDCopy.copyNo%TYPE)
-    RETURN CHAR
-AS
-    -- declare blah
-    theResult CHAR := 'UNKNOWN';
-BEGIN
-    IF fx_CheckedOut(theCatalogNo, theCopyNo) THEN
-        theResult := 'YES';
-    ELSIF NOT fx_CheckedOut(theCatalogNo, theCopyNo) THEN
-        theResult := 'NO';
-    ELSE
-        RAISE_APPLICATION_ERROR(-20008, 'HUGE FUCKING ERROR IN TEST FX.');
-    end if;
+-- Create a function to determine that a startDate is before an endDate
+CREATE OR REPLACE FUNCTION fx_StartBeforeEnd(theStartDate DATE, theEndDate DATE)
+    RETURN BOOLEAN
 
-    RETURN (theResult);
-end;
+AS
+    -- Declare necessary variables
+    timeDelta   NUMBER := theStartDate - theEndDate;
+    theResult   BOOLEAN;
+
+BEGIN
+
+    -- If theStartDate - theEndDate < 0 raise ERROR
+    IF timeDelta < 0 THEN
+        theResult := TRUE;
+    ELSE
+        RAISE_APPLICATION_ERROR(-20008, 'Provided StartDate must be before EndDate. ' ||
+                                        ' THESTARTDATE: ' || theStartDate ||
+                                        ' THEENDDATE: ' || theEndDate);
+    END IF;
+
+    RETURN(theResult);
+
+END;
+
+
+-- Create a function to return the real or hypothetical endDate of a rental.
+-- If the rental has been returned return the actual returnDate.
+-- If the rental is outstanding return the SYSDATE.
+CREATE OR REPLACE FUNCTION fx_ReturnRentalEndDate(theRentalNo Rental.rentalNo%TYPE)
+    RETURN DATE
+
+AS
+    -- Declare necessary variables.
+    theResult       DATE := SYSDATE;
+    theReturnDate   DATE := NULL;
+
+
+BEGIN
+
+    -- Check to see if the rental Exists.
+    IF fx_RentalExists(theRentalNo) THEN
+        SELECT DISTINCT RETURNDATE
+            INTO theReturnDate
+        FROM RENTAL
+            WHERE RENTALNO = theRentalNo;
+    END IF;
+    -- If the rental is returned theReturnDate IS NOT NULL.
+    IF theReturnDate IS NOT NULL THEN
+        theResult := theReturnDate;
+    END IF;
+
+    RETURN(theResult);
+END;
 
 
 -- EXTRA PROCEDURE checkOut. Placed before CheckIn since it's the logical sequence of events.
@@ -294,147 +351,6 @@ EXCEPTION
         RAISE_APPLICATION_ERROR(-20009, 'DVDCopy is currently checked out.' ||
                                         ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
 END;
-
-
--- EXTRA PROCEDURE checkOut. Placed before CheckIn since it's the logical sequence of events.
--- Write a procedure named checkOut to checks out a DVDCopy.
--- The procedure takes four parameters: the memberNo, the branchNo, the catalogNo and the copyNo.
--- Since rentalNo is auto sequenced then we should not need a rental number.
-
-CREATE OR REPLACE PROCEDURE CheckOut(theCatalogNo DVDCopy.catalogNo%TYPE,
-                                     theCopyNo DVDCopy.copyNo%TYPE,
-                                     theMember Member.memberNo%TYPE,
-                                     theRentalDate DATE DEFAULT SYSDATE)
-AS
-    -- declare necessary variables.
-    flag      NUMBER(1);
-    errorNo   NUMBER(5);
-    errorMsg  VARCHAR2(255);
-    theBranch CHAR(4);
-    no_member EXCEPTION;
-    copy_broken EXCEPTION;
-    no_dvd EXCEPTION;
-    no_copy EXCEPTION;
-    checked_out EXCEPTION;
-
-BEGIN
-
-    -- CASCADING CONDITION CHECKS.
-    -- Procedure must pass all conditions to be rentable.
-    -- After all conditions are met the insert/update statements are executed.
-
-    -- Check to see if the member exists.
-    SELECT COUNT(*)
-    INTO flag
-    FROM MEMBER
-    WHERE MEMBERNO = theMember;
-    IF flag < 1
-    THEN
-        RAISE no_member;
-    ELSE
-        -- Check to see if the DVD exists.
-        SELECT COUNT(*)
-        INTO flag
-        FROM DVD
-        WHERE CATALOGNO = theCatalogNo;
-        IF flag < 1
-        THEN
-            RAISE no_dvd;
-        ELSE
-            -- Check to see if the copy exists.
-            SELECT COUNT(*)
-            INTO flag
-            FROM DVDCOPY
-            WHERE CATALOGNO = theCatalogNo
-              AND COPYNO = theCopyNo;
-            IF flag < 1
-            THEN
-                RAISE no_copy;
-            ELSE
-                -- Check to see if the copy is already checked out in the DVDCopy table.
-                SELECT COUNT(*)
-                INTO flag
-                FROM DVDCOPY
-                WHERE CATALOGNO = theCatalogNo
-                  AND COPYNO = theCopyNo
-                  AND BRANCHNO IS NULL;
-                IF flag > 0
-                THEN
-                    RAISE checked_out;
-                ELSE
-                    -- Check to see that the copy is already check out in the Rental table.
-                    SELECT COUNT(*)
-                    INTO flag
-                    FROM RENTAL
-                    WHERE CATALOGNO = theCatalogNo
-                      AND COPYNO = theCopyNo
-                      AND ((RETURNDATE IS NULL) OR (RETURNEDTO IS NULL));
-                    IF flag > 0
-                    THEN
-                        RAISE checked_out;
-                    ELSE
-                        -- Check to see if the copy is rentable. Condition <> 4
-                        SELECT COUNT(*)
-                        INTO flag
-                        FROM DVDCOPY
-                        WHERE CATALOGNO = theCatalogNo
-                          AND COPYNO = theCopyNo
-                          AND CONDITION <> 4;
-                        IF flag < 1
-                        THEN
-                            RAISE copy_broken;
-                        ELSE
-                            -- All cascading conditions are satisfied.
-                            SELECT DISTINCT BRANCHNO
-                            INTO theBranch
-                            FROM DVDCOPY
-                            WHERE CATALOGNO = theCatalogNo
-                              AND COPYNO = theCopyNo;
-                            -- Insert a Rental into the rental table.
-                            -- 1 passed as the rental number to be replaced with the rental sequence.
-                            INSERT INTO RENTAL
-                            (CATALOGNO, COPYNO, MEMBERNO, RENTEDFROM, RENTDATE, RETURNEDTO, RETURNDATE)
-                            VALUES (theCatalogNo, theCopyNo, theMember, theBranch, theRentalDate, NULL, NULL);
-
-                            -- Update the DVDCopy record to set the branchNo to null.
-                            UPDATE DVDCOPY
-                            SET BRANCHNO = NULL
-                            WHERE CATALOGNO = theCatalogNo
-                              AND COPYNO = theCopyNo;
-
-                            -- Commit the changes.
-                            COMMIT;
-                        END IF;
-                    END IF;
-                END IF;
-            END IF;
-        END IF;
-    END IF;
-
-
-EXCEPTION
-    WHEN no_member THEN
-        RAISE_APPLICATION_ERROR(
-                -20001, 'The specified Member does not exist.'
-            || ' MEMBERNO: ' || theMember);
-    WHEN no_dvd THEN
-        RAISE_APPLICATION_ERROR(
-                -20002, 'The specified DVD does not exist.'
-            || ' CATALOGNO: ' || theCatalogNo);
-    WHEN no_copy THEN
-        RAISE_APPLICATION_ERROR(
-                -20003, 'The specified DVDCopy does not exist.'
-            || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
-    WHEN checked_out THEN
-        RAISE_APPLICATION_ERROR(
-                -20004, 'The specified DVDCopy is already checked out.'
-            || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
-    WHEN copy_broken THEN
-        RAISE_APPLICATION_ERROR(
-                -20005,
-                'The specified DVDCopy is broken and cannot be rented.'
-                    || ' CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
-END;/
 
 
 -- PROCEDURE
@@ -488,141 +404,6 @@ EXCEPTION
                                     ' COPYNO: ' || theCopyNo);
 
 END;
-
-
-CREATE OR REPLACE PROCEDURE CheckIn(
-    theRental Rental.rentalNo%TYPE,
-    theBranch Branch.branchNo%TYPE,
-    theReturnDate DATE DEFAULT SYSDATE)
-AS
-    -- declare necessary variables.
-    flag         NUMBER(1);
-    errorNo      NUMBER(5);
-    errorMsg     VARCHAR2(255);
-    theCatalogNo CHAR(6);
-    theCopyNo    INTEGER;
-    no_rental EXCEPTION;
-    date_or_to_null_check EXCEPTION;
-    branch_not_null EXCEPTION;
-    no_branch EXCEPTION;
-    checked_in EXCEPTION;
-
-BEGIN
-
-    -- CASCADING CONDITION CHECKS.
-    -- Procedure must pass all conditions to be returnable.
-    -- After all conditions are met the update statements are executed.
-
-    -- Check whether rental exists.
-    SELECT COUNT(*)
-    INTO flag
-    FROM RENTAL
-    WHERE RENTALNO = theRental;
-    IF flag < 1 THEN
-        RAISE no_rental;
-    ELSE
-        -- Check if returnedDate is Null and returnTo is not and vice versa.
-        SELECT COUNT(*)
-        INTO flag
-        FROM RENTAL
-        WHERE ((RETURNDATE IS NULL) AND (RETURNEDTO IS NOT NULL))
-           OR ((RETURNDATE IS NOT NULL) AND (RETURNEDTO IS NULL));
-        IF flag > 0
-        THEN
-            RAISE date_or_to_null_check;
-        ELSE
-            -- Check whether returnDate and returnBranch indicates rental is NOT checked in.
-            SELECT COUNT(*)
-            INTO flag
-            FROM RENTAL
-            WHERE RENTALNO = theRental
-              AND ((RETURNDATE IS NULL) AND (RETURNEDTO IS NULL));
-            IF flag <> 1 THEN
-                RAISE checked_in;
-            ELSE
-                -- RENTAL exists, not checked in via both returnedTo and returnedDate.
-                -- RENTALNO is unique so it's known that only one rental record exists at this point.
-                -- Set useful Variables.
-                BEGIN
-                    SELECT DISTINCT CATALOGNO
-                    INTO theCatalogNo
-                    FROM RENTAL
-                    WHERE RENTALNO = theRental;
-                    SELECT DISTINCT COPYNO
-                    INTO theCopyNo
-                    FROM RENTAL
-                    WHERE RENTALNO = theRental;
-                END;
-                -- Check whether the branch exists.
-                SELECT COUNT(*)
-                INTO flag
-                FROM BRANCH
-                WHERE BRANCHNO = theBranch;
-                IF flag < 1
-                THEN
-                    RAISE no_branch;
-                ELSE
-                    -- Check that the branch on DVDCopy is Null.
-                    SELECT COUNT(*)
-                    INTO flag
-                    FROM DVDCOPY
-                    WHERE CATALOGNO = theCatalogNo
-                      AND COPYNO = theCopyNo
-                      AND BRANCHNO IS NULL;
-                    IF flag < 1
-                    THEN
-                        RAISE branch_not_null;
-                    ELSE
-
-                        -- Update the rental record.
-                        UPDATE RENTAL
-                        SET RETURNDATE = theReturnDate,
-                            RETURNEDTO = theBranch
-                        WHERE RENTALNO = theRental;
-
-                        -- Update the DVDCopy.
-                        UPDATE DVDCOPY
-                        SET BRANCHNO = theBranch
-                        WHERE CATALOGNO = theCatalogNo
-                          AND COPYNO = theCopyNo;
-
-                        -- Commit the updates.
-                        COMMIT;
-                    END IF;
-                END IF;
-            END IF;
-        END IF;
-    END IF;
-
-EXCEPTION
-    WHEN
-        no_rental THEN
-        RAISE_APPLICATION_ERROR(
-                -20006, 'The specified Rental does not exist.'
-            || ' RENTALNO: ' || theRental);
-    WHEN
-        date_or_to_null_check THEN
-        RAISE_APPLICATION_ERROR(
-                -20007, 'Both returnDate and returnTo for the rental must be null. '
-            || 'RENTALNO: ' || theRental);
-    WHEN
-        branch_not_null THEN
-        RAISE_APPLICATION_ERROR(
-                -20008, 'The DVDCopy branchNo of the rental specified is not Null. '
-            || 'CATALOGNO: ' || theCatalogNo || ' COPYNO: ' || theCopyNo);
-    WHEN
-        no_branch THEN
-        RAISE_APPLICATION_ERROR(
-                -20009, 'The specified branch does not exist. '
-            || 'BRANCHNO: ' || theBranch);
-    WHEN
-        checked_in THEN
-        RAISE_APPLICATION_ERROR(
-                -20010, 'The specified rental is already checked in. '
-            || 'RENTALNO: ' || theRental);
-END;
-/
-
 
 
 -- FUNCTION
