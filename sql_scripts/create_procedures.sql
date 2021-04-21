@@ -88,7 +88,7 @@ BEGIN
     FROM BRANCH
     WHERE BRANCHNO = theBranchNo;
     IF flag < 1 THEN
-        RAISE_APPLICATION_ERROR(-20004, 'The Branch specified not exist.' ||
+        RAISE_APPLICATION_ERROR(-20004, 'The Branch specified does not exist.' ||
                                         ' BRANCHNO: ' || theBranchNo);
     END IF;
 
@@ -185,15 +185,15 @@ BEGIN
             theResult := TRUE;
             -- Error - DVDCopy.branchNo must be NULL if theReturnTo is NULL AND theReturnDate is NULL.
         ELSIF theBranchNo IS NOT NULL AND (theReturnedTo IS NULL OR theReturnDate IS NULL) THEN
-            RAISE_APPLICATION_ERROR(-20006,
-                                    'DVDCOPY.BRANCHNO: ' || theBranchNo ||
-                                    ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
-                                    ' RENTAL.RETURNDATE: ' || theReturnDate);
+            RAISE_APPLICATION_ERROR(-20006, 'ERROR CHECKOUT NULL CONDITIONS VIOLATED!' ||
+                                            ' DVDCOPY.BRANCHNO: ' || theBranchNo ||
+                                            ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
+                                            ' RENTAL.RETURNDATE: ' || theReturnDate);
         ELSIF theBranchNo IS NULL AND (theReturnedTo IS NOT NULL OR theReturnDate IS NOT NULL) THEN
-            RAISE_APPLICATION_ERROR(-20006,
-                                    'DVDCOPY.BRANCHNO: ' || theBranchNo ||
-                                    ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
-                                    ' RENTAL.RETURNDATE: ' || theReturnDate);
+            RAISE_APPLICATION_ERROR(-20006, 'ERROR CHECKOUT NULL CONDITIONS VIOLATED!' ||
+                                            ' DVDCOPY.BRANCHNO: ' || theBranchNo ||
+                                            ' RENTAL.RETURNEDTO: ' || theReturnedTo ||
+                                            ' RENTAL.RETURNDATE: ' || theReturnDate);
             -- The last rental has been returned.
         ELSIF theBranchNo IS NOT NULL AND theReturnedTo IS NOT NULL AND theReturnDate IS NOT NULL THEN
             theResult := FALSE;
@@ -259,7 +259,6 @@ AS
     theResult BOOLEAN;
 
 BEGIN
-
     -- If theStartDate - theEndDate < 0 raise ERROR
     IF timeDelta < 0 THEN
         theResult := TRUE;
@@ -372,15 +371,25 @@ CREATE OR REPLACE PROCEDURE proc_CheckIn(theCatalogNo DVDCopy.catalogNo%TYPE,
                                          theReturnDate DATE DEFAULT SYSDATE)
 AS
     -- Declare necessary variables.
-    theRentalNo INTEGER := fx_LastRentalNo(theCatalogNo, theCopyNo);
-    noRental EXCEPTION;
-    isCheckedIn EXCEPTION;
-    futureReturn EXCEPTION;
+    theRentalNo     INTEGER:= fx_LastRentalNo(theCatalogNo, theCopyNo);
+    theRentalDate   DATE;
+    noRental        EXCEPTION;
+    isCheckedIn     EXCEPTION;
+    futureReturn    EXCEPTION;
 
 BEGIN
 
-    -- Copy is already checked in if not checked out.
-    IF NOT fx_CheckedOut(theCatalogNo, theCopyNo) THEN
+    -- Check to make sure the returnDate is before the rentDate.
+    SELECT RENTDATE
+    INTO theRentalDate
+    FROM RENTAL
+    WHERE RENTALNO = theRentalNo;
+    IF NOT FX_STARTBEFOREEND(theRentalDate, theReturnDate) THEN
+        RETURN;
+    ELSIF NOT FX_BRANCHEXISTS(theBranchNo) THEN
+        RETURN;
+        -- Copy is already checked in if not checked out.
+    ELSIF NOT fx_CheckedOut(theCatalogNo, theCopyNo) THEN
         RAISE isCheckedIn;
     ELSIF theRentalNo IS NULL THEN
         RAISE noRental;
@@ -403,16 +412,16 @@ BEGIN
 
 EXCEPTION
     WHEN noRental THEN
-        RAISE_APPLICATION_ERROR(-20012, 'The DVDCopy has never been rented.' ||
+        RAISE_APPLICATION_ERROR(-20013, 'The DVDCopy has never been rented.' ||
                                         ' CATALOGNO: ' || theCatalogNo ||
                                         ' COPYNO: ' || theCopyNo);
     WHEN isCheckedIn THEN
-        RAISE_APPLICATION_ERROR(-20013, 'The DVDCopy has already been checked in.' ||
+        RAISE_APPLICATION_ERROR(-20014, 'The DVDCopy has already been checked in.' ||
                                         ' CATALOGNO: ' || theCatalogNo ||
                                         ' COPYNO: ' || theCopyNo);
 
     WHEN futureReturn THEN
-        RAISE_APPLICATION_ERROR(-20014, 'The ReturnDate may not be in the future:' ||
+        RAISE_APPLICATION_ERROR(-20015, 'The ReturnDate may not be in the future:' ||
                                         ' TODAY: ' || SYSDATE || ' THERETURNDATE: ' || theReturnDate);
 
 END;
@@ -473,46 +482,50 @@ CREATE OR REPLACE TRIGGER TRIG_StaffHandlingTooMuch
 DECLARE
     -- Declare Necessary Variables.
     -- 1. A staff member can supervise up to 10 others.
-    nSubordinates   NUMBER;
+    nSubordinates NUMBER;
 
     -- 2. A staff member who supervises others is in the position of supervisor or manager.
-    supPos          Staff.position%TYPE;
+    supPos        Staff.position%TYPE;
+
 
     --  3. The staff supervision relationship is hierarchical up to three levels.
-    supCount        NUMBER;
-    super           Staff.supervisor%TYPE;
+    supCount      NUMBER;
+    super         Staff.supervisor%TYPE;
 
 BEGIN
 
     --  1. A staff member can supervise up to 10 others.
     IF :NEW.supervisor IS NOT NULL THEN
         SELECT COUNT(*)
-            INTO nSubordinates
+        INTO nSubordinates
         FROM STAFF
         WHERE SUPERVISOR = :NEW.supervisor;
         IF nSubordinates > 9 THEN
-            RAISE_APPLICATION_ERROR(-20015, 'A supervisor may not oversee more than 10 other staff.' ||
+            RAISE_APPLICATION_ERROR(-20016, 'A supervisor may not oversee more than 10 other staff.' ||
                                             ' SUPERVISOR: ' || :NEW.supervisor || 'N_SUPERVISING' || nSubordinates);
         END IF;
     END IF;
 
     --  2. A staff member who supervises others is in the position of supervisor or manager.
-    IF :NEW.position = 'manager' THEN
+    IF NOT (:NEW.position = 'manager' OR :NEW.position = 'supervisor' OR :NEW.position = 'assistant') THEN
+        RAISE_APPLICATION_ERROR(-20017, 'The position specified must be in (manager, supervisor, or assistant).' ||
+                                        ' POSITION: ' || :NEW.position);
+    ELSIF :NEW.position = 'manager' THEN
         RETURN;
     ELSE
-        SELECT POSITION
+        SELECT DISTINCT POSITION
         INTO supPos
         FROM STAFF
         WHERE STAFFNO = :NEW.supervisor;
         IF NOT (supPos = 'manager' OR supPos = 'supervisor') THEN
-            RAISE_APPLICATION_ERROR(-20016, 'The supervisor specified is not in a position of manager or supervisor.' ||
+            RAISE_APPLICATION_ERROR(-20018, 'The supervisor specified is not in a position of manager or supervisor.' ||
                                             ' SUPERVISOR: ' || :NEW.SUPERVISOR);
         END IF;
     END IF;
 
     --  3. The staff supervision relationship is hierarchical up to three levels.
     IF :NEW.position = 'manger' AND :NEW.supervisor IS NOT NULL THEN
-        RAISE_APPLICATION_ERROR(-20017, 'A staff member specified is a manager and cannot have a supervisor.' ||
+        RAISE_APPLICATION_ERROR(-20019, 'A staff member specified is a manager and cannot have a supervisor.' ||
                                         ' STAFFNO: ' || :NEW.STAFFNO);
     ELSIF :NEW.position <> 'manager' THEN
         -- go for a loop ride.
@@ -529,7 +542,7 @@ BEGIN
     END IF;
 
     IF supCount > 3 THEN
-        RAISE_APPLICATION_ERROR(-20018, 'The staff supervisor relationship is higher than 3.');
+        RAISE_APPLICATION_ERROR(-20012, 'The staff supervisor relationship is higher than 3.');
     END IF;
 
 END;
